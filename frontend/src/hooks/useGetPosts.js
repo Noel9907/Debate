@@ -1,7 +1,7 @@
 import { toast } from "react-toastify";
 import { useState, useCallback } from "react";
 
-const useGetPosts = () => {
+const useGetAllPosts = () => {
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState([]);
 
@@ -27,5 +27,5 @@ const useGetPosts = () => {
 
   return { getPosts, posts, loading };
 };
-
-export default useGetPosts;
+// const useGet
+export default useGetAllPosts;

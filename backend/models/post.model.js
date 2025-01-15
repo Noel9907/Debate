@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 
-const againstSchema = new mongoose.Schema({
+const commentSchema = new mongoose.Schema({
+  position: {
+    type: Boolean, //tru for for-comment
+  },
   post_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Post",
@@ -28,37 +31,7 @@ const againstSchema = new mongoose.Schema({
   },
 });
 
-const Against = mongoose.model("Against", againstSchema);
-
-const forSchema = new mongoose.Schema({
-  post_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Post",
-    required: true,
-  },
-  username: {
-    type: String,
-    required: true,
-  },
-  text: {
-    required: true,
-    type: String,
-  },
-  likes: {
-    type: Array,
-    default: [],
-  },
-  dislikes: {
-    type: Array,
-    default: [],
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-const For = mongoose.model("For", forSchema);
+const Reply = mongoose.model("Replies", commentSchema);
 
 const postSchema = new mongoose.Schema(
   {
@@ -89,7 +62,6 @@ const postSchema = new mongoose.Schema(
       required: true,
     },
     categories: {
-      // Corrected the spelling
       type: Array,
       required: true,
     },
@@ -103,4 +75,4 @@ const postSchema = new mongoose.Schema(
 
 const Posts = mongoose.model("debate", postSchema);
 
-export default Posts;
+export default { Posts, Reply };

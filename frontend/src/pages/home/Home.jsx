@@ -13,7 +13,7 @@ import {
   ThumbsUp,
   Share2,
 } from "lucide-react";
-import useGetPosts from "../../hooks/useGetPosts";
+import useGetAllPosts from "../../hooks/useGetPosts";
 import Post from "./Post";
 
 const recommendedTopics = [
@@ -26,7 +26,7 @@ const recommendedTopics = [
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { getPosts, loading, posts } = useGetPosts();
+  const { getPosts, loading, posts } = useGetAllPosts();
   useEffect(() => {
     getPosts();
   }, [getPosts]);
@@ -178,6 +178,7 @@ export default function Home() {
                     key={index}
                     username={post.username}
                     title={post.title}
+                    id={post._id}
                     text={post.text}
                     likes={post.likes}
                     dislikes={post.dislikes}

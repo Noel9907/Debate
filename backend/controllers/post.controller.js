@@ -38,9 +38,9 @@ export const getPosts = async (req, res) => {
     // const posts = Post.find().pretty();
     Post.find({}).then((data) => {
       res.status(200).json({ data: data });
+      // console.log(data);
     });
     // const data = Post.find({});
-    // console.log(data);
   } catch (error) {
     console.log("error in createPost controller", error);
     res.status(500).json({ error: "internal server error" });

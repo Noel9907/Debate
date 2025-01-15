@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   MessageSquare,
@@ -9,7 +9,6 @@ import {
   Reply,
 } from "lucide-react";
 import CommentComponent from "./CommentComponent";
-
 // Mock data for the post and comments
 const mockPost = {
   id: "1",
@@ -53,7 +52,11 @@ const mockComments = [
 ];
 
 export default function Postpage() {
-  const { id } = useParams();
+  const location = useLocation();
+  const { id, username, likes, dislikes, text, title, categories } =
+    location.state;
+  console.log(categories);
+  const { Id } = useParams();
   const [post, setPost] = useState(mockPost);
   const [comments, setComments] = useState(mockComments);
   const [newComment, setNewComment] = useState("");
@@ -116,23 +119,23 @@ export default function Postpage() {
 
       <main className="container mx-auto px-4 py-8">
         <article className="bg-gray-800 bg-opacity-50 rounded-lg p-6 mb-8">
-          <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
-          <p className="text-gray-300 mb-4">{post.text}</p>
+          <h1 className="text-2xl font-bold mb-4">{title}</h1>
+          <p className="text-gray-300 mb-4">{text}</p>
           <div className="flex items-center justify-between text-sm text-gray-400">
-            <span>Posted by {post.username}</span>
+            <span>Posted by {username}</span>
             <div className="flex items-center space-x-4">
               <span className="flex items-center">
                 <ThumbsUp className="w-4 h-4 mr-1" />
-                {post.likes}
+                {likes}
               </span>
               <span className="flex items-center">
                 <ThumbsDown className="w-4 h-4 mr-1" />
-                {post.dislikes}
+                {dislikes}
               </span>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {post.categories.map((category, index) => (
+            {categories.map((category, index) => (
               <span
                 key={index}
                 className="bg-gray-700 px-2 py-1 rounded-full text-xs"

@@ -3,10 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import useCreatePost from "../../hooks/useCreatePost.js";
 
 export default function CreatePost() {
+  const name = JSON.parse(localStorage.getItem("chat-user")).username;
+  const id = JSON.parse(localStorage.getItem("chat-user"))._id;
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: "",
+    username: name,
     text: "",
+    author_id: id,
     catogories: "",
     title: "",
     isPublic: true,
@@ -41,20 +45,6 @@ export default function CreatePost() {
       <div className="max-w-2xl mx-auto bg-gray-800 rounded-lg p-6">
         <h1 className="text-2xl font-bold mb-6">Create a New Debate</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="username" className="block mb-1">
-              Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleInputChange}
-              className="w-full bg-gray-700 text-white rounded p-2"
-              required
-            />
-          </div>
           <div>
             <label htmlFor="title" className="block mb-1">
               Debate Title
