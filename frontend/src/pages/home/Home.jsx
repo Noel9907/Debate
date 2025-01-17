@@ -86,7 +86,7 @@ export default function Home() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-gray-800 py-4">
+        <div className="md:hidden bg-gray-800 py-4 ">
           <nav className="container mx-auto px-4">
             <ul className="space-y-4">
               <li>

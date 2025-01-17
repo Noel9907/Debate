@@ -53,9 +53,8 @@ const mockComments = [
 
 export default function Postpage() {
   const location = useLocation();
-  const { id, username, likes, dislikes, text, title, categories } =
-    location.state;
-  console.log(categories);
+  const { id, username, likes, dislikes, text, title } = location.state;
+  const categories = location.state || "";
   const { Id } = useParams();
   const [post, setPost] = useState(mockPost);
   const [comments, setComments] = useState(mockComments);
@@ -135,14 +134,15 @@ export default function Postpage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {categories.map((category, index) => (
-              <span
-                key={index}
-                className="bg-gray-700 px-2 py-1 rounded-full text-xs"
-              >
-                {category}
-              </span>
-            ))}
+            {Array.isArray(categories) &&
+              categories.map((category, index) => (
+                <span
+                  key={index}
+                  className="bg-gray-700 px-2 py-1 rounded-full text-xs"
+                >
+                  {category}
+                </span>
+              ))}
           </div>
         </article>
 

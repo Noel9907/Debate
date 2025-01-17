@@ -54,7 +54,11 @@ export default function Posts({
             <div>
               <h3 className="text-lg font-semibold">{title}</h3>
               <p className="text-sm text-gray-400">
-                Posted by {username} • Category : {" " + categories + " "}
+                {categories && (
+                  <span>
+                    Posted by {username} • Category: {categories.join(", ")}
+                  </span>
+                )}
               </p>
             </div>
           </div>

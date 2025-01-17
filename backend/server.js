@@ -5,7 +5,7 @@ import cors from "cors";
 
 import authRoutes from "./routes/auth.routes.js";
 import createRoutes from "./routes/create.routes.js";
-// import userRoutes from "./routes/user.routes.js";
+import getRoutes from "./routes/get.routes.js";
 
 import connectToMongoDB from "./db/connectToMongoDB.js";
 dotenv.config();
@@ -25,12 +25,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/create", createRoutes);
-// app.use("/api/users", userRoutes);
-
-// app.get("/",(req,res)=> {
-//     //root rout http://localhost:5000/
-//     res.send("hellow mad am");
-// });
+app.use("/api/get", getRoutes);
 
 app.listen(PORT, () => {
   connectToMongoDB();

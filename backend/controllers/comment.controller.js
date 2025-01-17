@@ -1,21 +1,44 @@
-import Reply from "../models/post.model.js";
+import Reply from "../models/comment.model.js";
+import Posts from "../models/post.model.js";
 
 export const getPostComment = async (req, res) => {
   try {
-    Reply.find({}).then((data) => {
-      res.status(200).json({ data: data });
-    });
+    const { postid } = req.body;
+    const isthere = await Reply.findOne({ postid: postid });
+    if (isthere) {
+      Reply.find({ postid: postid }).then((data) => {
+        res.status(200).json(data);
+      });
+    } else {
+      throw "no comment with this id";
+    }
   } catch (error) {
     console.log("error in createPost controller", error);
     res.status(500).json({ error: "internal server error" });
   }
 };
 
-export const getCommentReplies = async (req, res) => {
+export const createComment = async (req, res) => {
   try {
-    Reply.find({}).then((data) => {
-      res.status(200).json({ data: data });
-    });
+    const { username, postid, text, position } = req.body;
+    const isthere = await Posts.findOne({ _id: postid });
+    if (isthere) {
+      const comment = new Reply({
+        username,
+        text,
+        postid,
+        position,
+      });
+      await comment.save();
+      res.status(201).json({
+        username: comment.username,
+        postid: comment.postid,
+        text: comment.text,
+        position: comment.position, // postedBy: post.postedBy,
+      });
+    } else {
+      throw new Error("no post with this is");
+    }
   } catch (error) {
     console.log("error in createPost controller", error);
     res.status(500).json({ error: "internal server error" });
