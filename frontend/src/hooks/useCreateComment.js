@@ -1,8 +1,9 @@
 import { toast } from "react-toastify";
-
+import { useState } from "react";
 const useCreateComment = () => {
   const [LoadingComment, setLoadingComment] = useState(false);
-  const createComment = async (postid, username, text, position) => {
+  const createComment = async (comment) => {
+    const { postid, username, text, position } = comment;
     const sucsess = handleInputerrors(postid, username, text, position);
     if (!sucsess) return;
     setLoadingComment(true);
@@ -26,6 +27,7 @@ const useCreateComment = () => {
 export default useCreateComment;
 
 function handleInputerrors(postid, username, text, position) {
+  console.log();
   if (!postid || !username || !text || !position) {
     toast.error("fill all fields !");
     return false;

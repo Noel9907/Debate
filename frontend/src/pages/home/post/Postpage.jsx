@@ -9,73 +9,36 @@ import {
   Reply,
 } from "lucide-react";
 import CommentComponent from "./CommentComponent";
-// Mock data for the post and comments
-const mockPost = {
-  id: "1",
-  username: "JohnDoe",
-  title: "Should AI be regulated?",
-  text: "As AI technology advances rapidly, there's a growing debate about whether it should be regulated. What are your thoughts?",
-  likes: 120,
-  dislikes: 45,
-  categories: ["Technology", "Ethics", "Politics"],
-};
-
-const mockComments = [
-  {
-    id: "1",
-    username: "Alice",
-    text: "I believe AI should be regulated to ensure it's developed and used ethically.",
-    isFor: true,
-    replies: [],
-  },
-  {
-    id: "2",
-    username: "Bob",
-    text: "Regulation might stifle innovation. We should let the technology develop freely.",
-    isFor: false,
-    replies: [
-      {
-        id: "2-1",
-        username: "Charlie",
-        text: "I disagree. Some regulation is necessary to protect society.",
-        isFor: true,
-      },
-    ],
-  },
-  {
-    id: "3",
-    username: "Charlie",
-    text: "A balanced approach with some oversight is necessary to protect society while allowing progress.",
-    isFor: true,
-    replies: [],
-  },
-];
+import useCreateComment from "../../../hooks/useCreateComment.js";
+import { useGetComments } from "../../../hooks/useGetComments.js";
 
 export default function Postpage() {
+  const { getCommentLoading, getComments, currentComment } = useGetComments();
+  const CurrentUser = JSON.parse(localStorage.getItem("chat-user"));
   const location = useLocation();
   const { id, username, likes, dislikes, text, title } = location.state;
   const categories = location.state || "";
-  const { Id } = useParams();
-  const [post, setPost] = useState(mockPost);
-  const [comments, setComments] = useState(mockComments);
+
   const [newComment, setNewComment] = useState("");
   const [isFor, setIsFor] = useState(true);
-
+  const { createComment, LoadingComment } = useCreateComment();
   useEffect(() => {
-    // In a real app, fetch the post and comments data here
-    // For now, we'll use the mock data
-  }, [id]);
-
+    getComments(id);
+  }, [currentComment]);
+  const [comments, setComments] = useState(currentComment);
   const handleSubmitComment = (e) => {
     e.preventDefault();
     if (newComment.trim()) {
       const comment = {
         id: String(comments.length + 1),
-        username: "CurrentUser", // In a real app, get this from auth state
+        postid: id,
+        username: CurrentUser.name, // In a real app, get this from auth state
         text: newComment,
-        isFor,
+        position: isFor,
         replies: [],
       };
+      console.log(comment);
+      createComment(comment);
       setComments([...comments, comment]);
       setNewComment("");
     }
@@ -101,6 +64,7 @@ export default function Postpage() {
     });
     setComments(updatedComments);
   };
+  console.log(currentComment);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
@@ -149,7 +113,7 @@ export default function Postpage() {
         <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Comments</h2>
           <div className="space-y-4 mb-6">
-            {comments.map((comment) => (
+            {(comments ?? []).map((comment) => (
               <CommentComponent
                 key={comment.id}
                 comment={comment}

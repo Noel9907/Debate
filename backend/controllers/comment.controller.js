@@ -7,7 +7,7 @@ export const getPostComment = async (req, res) => {
     const isthere = await Reply.findOne({ postid: postid });
     if (isthere) {
       Reply.find({ postid: postid }).then((data) => {
-        res.status(200).json(data);
+        res.status(201).json(data);
       });
     } else {
       throw "no comment with this id";
@@ -30,6 +30,7 @@ export const createComment = async (req, res) => {
         position,
       });
       await comment.save();
+
       res.status(201).json({
         username: comment.username,
         postid: comment.postid,
