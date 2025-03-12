@@ -8,7 +8,7 @@ const useGetAllPosts = () => {
   const getPosts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/api/create/getPosts", {
+      const res = await fetch("http://localhost:3000/api/get/getPosts", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });

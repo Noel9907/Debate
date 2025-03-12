@@ -13,7 +13,6 @@ export const createPost = async (req, res) => {
         title,
         author_id,
         catogories,
-        // postedBy: req.user._id,
       });
       await post.save();
       res.status(201).json({

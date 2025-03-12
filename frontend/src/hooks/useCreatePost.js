@@ -1,10 +1,8 @@
-import React from "react";
 import { toast } from "react-toastify";
 import { useState } from "react";
 
 const useCreatePost = () => {
-  const [Loading, setLoading] = useState(false);
-
+  const [loading, setLoading] = useState(false);
   const createPost = async ({
     username,
     text,
@@ -12,35 +10,53 @@ const useCreatePost = () => {
     catogories,
     title,
   }) => {
-    const sucsess = handleInputerrors(username, text, author_id, catogories);
+    const isValid = handleInputErrors(username, text, catogories, title);
 
-    if (!sucsess) return;
-
+    if (!isValid) return;
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/api/create/post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, text, author_id, catogories, title }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/create/post`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username,
+            text,
+            author_id,
+            catogories,
+            title,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create post");
+      }
+
+      toast.success("Post created successfully!");
+      return await res.json(); // Optionally return response data
     } catch (error) {
-      toast(error.message);
+      toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
-  return { createPost, Loading };
+
+  return { createPost, loading };
 };
 
 export default useCreatePost;
 
-function handleInputerrors(username, text, author_id, catogories) {
-  // if (!username || !text || !catogories) {
-  //   toast.error("Fill all the feilds");
-  //   return false;
-  // } else {
-  //   return true;
-  // }
-
+function handleInputErrors(username, text, catogories, title) {
+  if (!username || !text || !catogories || !title) {
+    toast.error("All fields are required");
+    return false;
+  }
+  if (text.length < 10) {
+    toast.error("Text must be at least 10 characters long");
+    return false;
+  }
   return true;
 }
