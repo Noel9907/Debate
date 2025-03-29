@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export const useGetComments = () => {
   const [getCommentLoading, setgetCommentLoading] = useState();
-  const [currentComment, setcurrentComment] = useState();
+  const [currentComment, setcurrentComment] = useState([]);
 
   const getComments = async (postid) => {
     try {
@@ -16,11 +16,10 @@ export const useGetComments = () => {
         }
       );
       const data = await res.json();
-      console.log(data);
       if (data.error) {
         throw new Error(data.error);
       }
-      setcurrentComment(data.data);
+      setcurrentComment(data);
     } catch (error) {
       toast.error(error.message || "Something went wrong");
     } finally {

@@ -4,13 +4,17 @@ import Posts from "../models/post.model.js";
 export const getPostComment = async (req, res) => {
   try {
     const { postid } = req.body;
+    if (!postid) {
+      throw new Error("no POst id");
+    }
     const isthere = await Reply.findOne({ postid: postid });
+    // console.log(isthere);
     if (isthere) {
       Reply.find({ postid: postid }).then((data) => {
         res.status(201).json(data);
       });
     } else {
-      throw "no comment with this id";
+      res.status(203).json({ message: "no comments" });
     }
   } catch (error) {
     console.log("error in createPost controller", error);
@@ -30,7 +34,6 @@ export const createComment = async (req, res) => {
         position,
       });
       await comment.save();
-
       res.status(201).json({
         username: comment.username,
         postid: comment.postid,

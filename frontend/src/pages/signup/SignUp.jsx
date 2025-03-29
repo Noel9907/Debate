@@ -21,7 +21,6 @@ export default function SignUp() {
       confirmpassword: inputs.confirmpassword.trim(),
       gender: inputs.gender.trim(),
     };
-    console.log("trimmedInputs", trimmedInputs);
     await signup(trimmedInputs);
   };
 

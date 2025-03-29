@@ -11,7 +11,7 @@ export default function CreatePost() {
     username: name,
     text: "",
     author_id: id,
-    catogories: "",
+    categories: "",
     title: "",
     isPublic: true,
   });
@@ -78,9 +78,9 @@ export default function CreatePost() {
               Category
             </label>
             <select
-              id="catogories"
-              name="catogories"
-              value={formData.catogories}
+              id="categories"
+              name="categories"
+              value={formData.categories}
               onChange={handleInputChange}
               className="w-full bg-gray-700 text-white rounded p-2"
               required

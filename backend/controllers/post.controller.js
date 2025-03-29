@@ -3,7 +3,7 @@ import User from "../models/user.model.js";
 
 export const createPost = async (req, res) => {
   try {
-    const { username, text, author_id, catogories, title } = req.body;
+    const { username, text, author_id, categories, title } = req.body;
     const isthere = await User.findOne({ username: username });
     console.log(title);
     if (isthere) {
@@ -12,15 +12,16 @@ export const createPost = async (req, res) => {
         text,
         title,
         author_id,
-        catogories,
+        categories,
       });
       await post.save();
       res.status(201).json({
+        id: post.id,
         username: post.username,
         title: post.title,
         text: post.text,
         author_id: post.author_id,
-        catogories: post.catogories,
+        categories: post.categories,
         // postedBy: post.postedBy,
       });
     } else {

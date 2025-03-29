@@ -13,7 +13,6 @@ const useLogin = () => {
     if (!sucsess) return;
 
     setLoading(true);
-    console.log(JSON.stringify({ username, password }));
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/auth/login`,

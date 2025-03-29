@@ -7,10 +7,10 @@ const useCreatePost = () => {
     username,
     text,
     author_id,
-    catogories,
+    categories,
     title,
   }) => {
-    const isValid = handleInputErrors(username, text, catogories, title);
+    const isValid = handleInputErrors(username, text, categories, title);
 
     if (!isValid) return;
     setLoading(true);
@@ -24,7 +24,7 @@ const useCreatePost = () => {
             username,
             text,
             author_id,
-            catogories,
+            categories,
             title,
           }),
         }
@@ -49,8 +49,8 @@ const useCreatePost = () => {
 
 export default useCreatePost;
 
-function handleInputErrors(username, text, catogories, title) {
-  if (!username || !text || !catogories || !title) {
+function handleInputErrors(username, text, categories, title) {
+  if (!username || !text || !categories || !title) {
     toast.error("All fields are required");
     return false;
   }

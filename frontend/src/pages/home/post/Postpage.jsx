@@ -13,29 +13,30 @@ import useCreateComment from "../../../hooks/useCreateComment.js";
 import { useGetComments } from "../../../hooks/useGetComments.js";
 
 export default function Postpage() {
-  const { getCommentLoading, getComments, currentComment } = useGetComments();
   const CurrentUser = JSON.parse(localStorage.getItem("chat-user"));
   const location = useLocation();
   const { id, username, likes, dislikes, text, title } = location.state;
   const categories = location.state || "";
+  const { getCommentLoading, getComments, currentComment } = useGetComments([]);
+  useEffect(() => {
+    getComments(id);
+  }, [getComments]);
 
   const [newComment, setNewComment] = useState("");
   const [isFor, setIsFor] = useState(true);
   const { createComment, LoadingComment } = useCreateComment();
-  useEffect(() => {
-    getComments(id);
-  }, [currentComment]);
-  const [comments, setComments] = useState(currentComment);
+  // console.log(currentComment);
+  const [comments, setComments] = useState([]);
+  // setComments(currentComment);
   const handleSubmitComment = (e) => {
     e.preventDefault();
     if (newComment.trim()) {
       const comment = {
-        id: String(comments.length + 1),
         postid: id,
-        username: CurrentUser.name, // In a real app, get this from auth state
+        username: CurrentUser.username, // In a real app, get this from auth state
         text: newComment,
         position: isFor,
-        replies: [],
+        // replies: [],
       };
       console.log(comment);
       createComment(comment);
@@ -43,7 +44,6 @@ export default function Postpage() {
       setNewComment("");
     }
   };
-
   const handleReply = (commentId, replyText, isFor) => {
     const updatedComments = comments.map((comment) => {
       if (comment.id === commentId) {
@@ -64,7 +64,6 @@ export default function Postpage() {
     });
     setComments(updatedComments);
   };
-  console.log(currentComment);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
@@ -113,13 +112,17 @@ export default function Postpage() {
         <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Comments</h2>
           <div className="space-y-4 mb-6">
-            {(comments ?? []).map((comment) => (
-              <CommentComponent
-                key={comment.id}
-                comment={comment}
-                onReply={handleReply}
-              />
-            ))}
+            {currentComment?.length > 0 ? (
+              currentComment.map((comment, index) => (
+                <CommentComponent
+                  key={index}
+                  comment={comment}
+                  onReply={handleReply}
+                />
+              ))
+            ) : (
+              <p>No comments yet.</p>
+            )}
           </div>
 
           <form onSubmit={handleSubmitComment} className="space-y-4">

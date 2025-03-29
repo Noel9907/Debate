@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    // insterested_catogories: {
+    // insterested_categories: {
     //   type: String,
     //   required: false,
     // },

@@ -182,7 +182,7 @@ export default function Home() {
                     text={post.text}
                     likes={post.likes}
                     dislikes={post.dislikes}
-                    categories={post.catogories}
+                    categories={post.categories}
                   />
                 ))}
               </div>

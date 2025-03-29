@@ -1,5 +1,6 @@
 import { toast } from "react-toastify";
 import { useState } from "react";
+import { use } from "react";
 const useCreateComment = () => {
   const [LoadingComment, setLoadingComment] = useState(false);
   const createComment = async (comment) => {
@@ -27,9 +28,8 @@ const useCreateComment = () => {
 export default useCreateComment;
 
 function handleInputerrors(postid, username, text, position) {
-  console.log();
-  if (!postid || !username || !text || !position) {
-    toast.error("fill all fields !");
+  if (!postid || !username || !text || typeof position !== "boolean") {
+    toast.error("fill all fields ! ");
     return false;
   } else {
     return true;

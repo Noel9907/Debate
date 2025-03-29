@@ -7,6 +7,7 @@ import {
   ThumbsUp,
   Share2,
 } from "lucide-react";
+import { use } from "react";
 
 export default function Posts({
   username,
@@ -45,8 +46,8 @@ export default function Posts({
         >
           <div className="flex items-center space-x-4 mb-4">
             <Image
-              src={`https://api.dicebear.com/6.x/initials/svg?seed=${debate.author}`}
-              alt={debate.author}
+              src={`https://api.dicebear.com/6.x/initials/svg?seed=${username}`}
+              alt={username}
               width={40}
               height={40}
               className="rounded-full"
