@@ -56,7 +56,7 @@ export default function Home() {
             href="/"
             className="text-2xl font-bold text-red-500 hover:text-red-400 transition-colors"
           >
-            DebateHub
+            SpeakUp
           </Link>
           <div className="hidden md:flex items-center space-x-4">
             <button className="text-white hover:text-red-400 transition-colors">

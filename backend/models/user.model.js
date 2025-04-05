@@ -6,11 +6,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      trim: true,
+      lowercase: true, // Store lowercase for case-insensitive queries
+      index: true,
     },
     password: {
       type: String,
-      require: true,
+      required: true,
       minlength: 6,
+      select: false, // Don't include password in query results by default
     },
     gender: {
       type: String,
@@ -21,14 +25,38 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    // insterested_categories: {
-    //   type: String,
-    //   required: false,
-    // },
-    //created at ,updated at => Member since <CreatedAt>
+    interested_categories: {
+      type: [String],
+      default: [],
+    },
+    posts_count: {
+      type: Number,
+      default: 0,
+    },
+    comments_count: {
+      type: Number,
+      default: 0,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
-const User = mongoose.model("debate post", userSchema);
 
+// Virtual references
+userSchema.virtual("posts", {
+  ref: "DebatePost",
+  localField: "_id",
+  foreignField: "author_id",
+});
+
+userSchema.virtual("comments", {
+  ref: "Comment",
+  localField: "username",
+  foreignField: "username",
+});
+
+const User = mongoose.model("User", userSchema);
 export default User;

@@ -24,13 +24,15 @@ export const getPostComment = async (req, res) => {
 
 export const createComment = async (req, res) => {
   try {
-    const { username, postid, text, position } = req.body;
+    const { username, postid, text, position, author_id } = req.body;
+    console.log("auth id " + author_id);
     const isthere = await Posts.findOne({ _id: postid });
     if (isthere) {
       const comment = new Reply({
         username,
         text,
         postid,
+        author_id,
         position,
       });
       await comment.save();
@@ -38,6 +40,7 @@ export const createComment = async (req, res) => {
         username: comment.username,
         postid: comment.postid,
         text: comment.text,
+        author_id: comment.author_id,
         position: comment.position, // postedBy: post.postedBy,
       });
     } else {

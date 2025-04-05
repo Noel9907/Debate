@@ -4,8 +4,14 @@ import { use } from "react";
 const useCreateComment = () => {
   const [LoadingComment, setLoadingComment] = useState(false);
   const createComment = async (comment) => {
-    const { postid, username, text, position } = comment;
-    const sucsess = handleInputerrors(postid, username, text, position);
+    const { postid, username, text, position, author_id } = comment;
+    const sucsess = handleInputerrors(
+      postid,
+      username,
+      text,
+      position,
+      author_id
+    );
     if (!sucsess) return;
     setLoadingComment(true);
     try {
@@ -14,7 +20,7 @@ const useCreateComment = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postid, username, text, position }),
+          body: JSON.stringify({ postid, username, text, position, author_id }),
         }
       );
     } catch (error) {
@@ -27,8 +33,14 @@ const useCreateComment = () => {
 };
 export default useCreateComment;
 
-function handleInputerrors(postid, username, text, position) {
-  if (!postid || !username || !text || typeof position !== "boolean") {
+function handleInputerrors(postid, username, text, position, author_id) {
+  if (
+    !postid ||
+    !username ||
+    !text ||
+    typeof position !== "boolean" ||
+    !author_id
+  ) {
     toast.error("fill all fields ! ");
     return false;
   } else {

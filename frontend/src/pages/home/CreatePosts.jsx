@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import useCreatePost from "../../hooks/useCreatePost.js";
 
 export default function CreatePost() {
-  const name = JSON.parse(localStorage.getItem("chat-user")).username;
-  const id = JSON.parse(localStorage.getItem("chat-user"))._id;
+  const name = JSON.parse(localStorage.getItem("duser")).username;
+  const id = JSON.parse(localStorage.getItem("duser"))._id;
 
   const navigate = useNavigate();
   const [formData, setFormData] = useState({

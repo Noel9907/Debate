@@ -46,3 +46,19 @@ export const getPosts = async (req, res) => {
     res.status(500).json({ error: "internal server error" });
   }
 };
+
+export const like = async (req, res) => {
+  try {
+    const { postid } = req.body;
+    const isthere = Post.findOne({ _id: postid });
+    if (isthere) {
+      const likes = Post.findOne({ _id: postid }, { likes: 1 });
+      console.log(Post.findOne({ _id: postid }, { likes: 1 }));
+      console.log("dfsd" + likes);
+      res.status(200);
+    }
+  } catch (error) {
+    console.error("Error in like controller", error);
+    res.status(500).json({ error: "internal server error" });
+  }
+};
