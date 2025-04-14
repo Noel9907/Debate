@@ -20,6 +20,7 @@ export default function Posts({
   text,
   title,
 }) {
+  const postid = id;
   const [upvotes, setUpvotes] = useState(likes || 0);
   const [downvotes, setDownvotes] = useState(dislikes);
   const [userVote, setUserVote] = useState(null);
@@ -100,7 +101,7 @@ export default function Posts({
     <div className="p-2 sm:p-3 transform hover:scale-100 sm:hover:scale-102 transition-transform duration-200">
       <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500">
         <Link
-          to="/test"
+          to={`/test/${postid}`}
           state={{
             id,
             username,

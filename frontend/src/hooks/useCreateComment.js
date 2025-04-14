@@ -1,18 +1,22 @@
 import { toast } from "react-toastify";
 import { useState } from "react";
-import { use } from "react";
+
 const useCreateComment = () => {
   const [LoadingComment, setLoadingComment] = useState(false);
+  const [commentSubmitted, setCommentSubmitted] = useState(false);
+
   const createComment = async (comment) => {
     const { postid, username, text, position, author_id } = comment;
-    const sucsess = handleInputerrors(
+    const success = handleInputErrors(
       postid,
       username,
       text,
       position,
       author_id
     );
-    if (!sucsess) return;
+
+    if (!success) return Promise.reject(new Error("Invalid input"));
+
     setLoadingComment(true);
     try {
       const res = await fetch(
@@ -23,17 +27,28 @@ const useCreateComment = () => {
           body: JSON.stringify({ postid, username, text, position, author_id }),
         }
       );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create comment");
+      }
+
+      setCommentSubmitted(true);
+      return res.json();
     } catch (error) {
-      toast(error.message);
+      toast.error(error.message || "Error creating comment");
+      throw error;
     } finally {
       setLoadingComment(false);
     }
   };
-  return { createComment, LoadingComment };
+
+  return { createComment, LoadingComment, commentSubmitted };
 };
+
 export default useCreateComment;
 
-function handleInputerrors(postid, username, text, position, author_id) {
+function handleInputErrors(postid, username, text, position, author_id) {
   if (
     !postid ||
     !username ||
@@ -41,7 +56,7 @@ function handleInputerrors(postid, username, text, position, author_id) {
     typeof position !== "boolean" ||
     !author_id
   ) {
-    toast.error("fill all fields ! ");
+    toast.error("Please fill all fields!");
     return false;
   } else {
     return true;

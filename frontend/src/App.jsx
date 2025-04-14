@@ -14,7 +14,7 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/test" element={<Postpage />} />
+        <Route path="/test/:postid" element={<Postpage />} />
         <Route
           path="/"
           element={authUser ? <Home /> : <Navigate to="/signup" />}

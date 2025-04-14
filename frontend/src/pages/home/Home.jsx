@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Image } from "lucide-react";
 import {
   MessageSquare,
   TrendingUp,

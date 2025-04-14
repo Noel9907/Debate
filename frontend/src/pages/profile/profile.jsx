@@ -88,7 +88,7 @@ export default function Profile() {
             href="/"
             className="text-2xl font-bold text-red-500 hover:text-red-400 transition-colors"
           >
-            DebateHub
+            SpeakUp
           </Link>
           <div className="flex items-center space-x-4">
             <Link
