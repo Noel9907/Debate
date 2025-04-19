@@ -179,8 +179,9 @@ export default function Home() {
                     title={post.title}
                     id={post._id}
                     text={post.text}
-                    likes={post.likes}
-                    dislikes={post.dislikes}
+                    likes={post.likes_count}
+                    comments={post.comments_count}
+                    dislikes={post.dislikes_count}
                     categories={post.categories}
                   />
                 ))}

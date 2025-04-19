@@ -63,6 +63,7 @@ export const getPosts = async (req, res) => {
 export const like = async (req, res) => {
   try {
     const { postid, user, stance } = req.body;
+    console.log(postid);
     const isThere = allThere(postid, user, stance);
     if (isThere) {
       // Find the post first to make sure it exists

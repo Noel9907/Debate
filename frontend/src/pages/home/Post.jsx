@@ -7,16 +7,22 @@ import {
   ThumbsDown,
   Share2,
   Award,
+  Copy,
+  Facebook,
+  Twitter,
+  Linkedin,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Posts({
   username,
   likes,
   categories,
   createdAt,
-  dislikes = 1000,
+  dislikes,
   id,
+  comments,
   text,
   title,
 }) {
@@ -24,6 +30,11 @@ export default function Posts({
   const [upvotes, setUpvotes] = useState(likes || 0);
   const [downvotes, setDownvotes] = useState(dislikes);
   const [userVote, setUserVote] = useState(null);
+
+  // Share functionality state
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const shareMenuRef = useRef(null);
 
   // Calculate net votes
   const netVotes = upvotes - downvotes;
@@ -97,9 +108,72 @@ export default function Posts({
     comments: 10,
   };
 
+  // Share menu handlers
+  const handleShareButtonClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowShareMenu(!showShareMenu);
+    setCopySuccess(false);
+  };
+
+  const shareUrl = window.location.origin + `/test/${postid}`;
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shareUrl).then(
+      () => {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      },
+      (err) => {
+        console.error("Could not copy text: ", err);
+      }
+    );
+  };
+
+  const shareToSocialMedia = (platform) => {
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const encodedText = encodeURIComponent(`Check out this debate: ${title}`);
+    let shareLink = "";
+
+    switch (platform) {
+      case "twitter":
+        shareLink = `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`;
+        break;
+      case "facebook":
+        shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+        break;
+      case "linkedin":
+        shareLink = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+        break;
+      default:
+        return;
+    }
+    window.open(shareLink, "_blank", "width=600,height=400");
+    setShowShareMenu(false);
+  };
+
+  // Close share menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        shareMenuRef.current &&
+        !shareMenuRef.current.contains(event.target)
+      ) {
+        setShowShareMenu(false);
+      }
+    };
+
+    if (showShareMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showShareMenu]);
+
   return (
     <div className="p-2 sm:p-3 transform hover:scale-100 sm:hover:scale-102 transition-transform duration-200">
-      <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500">
+      <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500 relative">
         <Link
           to={`/test/${postid}`}
           state={{
@@ -159,12 +233,12 @@ export default function Posts({
           </p>
         </Link>
 
-        {/* Stats Bar - Now using grid for better responsiveness */}
+        {/* Stats Bar */}
         <div className="grid grid-cols-3 gap-1 text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4">
           <span className="flex items-center justify-start">
             <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-400" />
             <span className="truncate">
-              {formatNumber(debate.participants)}
+              {formatNumber(comments + likes + dislikes)}
             </span>
             <span className="hidden sm:inline ml-1">participants</span>
           </span>
@@ -175,7 +249,7 @@ export default function Posts({
           </span>
           <span className="flex items-center justify-end">
             <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-purple-400" />
-            <span className="truncate">{formatNumber(debate.comments)}</span>
+            <span className="truncate">{formatNumber(comments)}</span>
             <span className="hidden sm:inline ml-1">comments</span>
           </span>
         </div>
@@ -221,15 +295,50 @@ export default function Posts({
             </button>
           </div>
 
-          <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-0">
-            <button className="flex items-center text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-gray-700">
-              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="text-xs sm:text-sm">Comment</span>
-            </button>
-            <button className="flex items-center text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-gray-700">
+          <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-0 relative">
+            <button
+              onClick={handleShareButtonClick}
+              className="flex items-center text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-gray-700"
+            >
               <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="text-xs sm:text-sm">Share</span>
             </button>
+            {/* Share Menu Dropdown */}
+            {showShareMenu && (
+              <div
+                ref={shareMenuRef}
+                className="absolute top-full right-0 mt-1 w-48 bg-gray-800 rounded-md shadow-lg z-50 py-1 border border-gray-700"
+              >
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Copy className="w-4 h-4 mr-3" />
+                  {copySuccess ? "Copied!" : "Copy Link"}
+                </button>
+                <button
+                  onClick={() => shareToSocialMedia("twitter")}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Twitter className="w-4 h-4 mr-3" />
+                  Twitter
+                </button>
+                <button
+                  onClick={() => shareToSocialMedia("facebook")}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Facebook className="w-4 h-4 mr-3" />
+                  Facebook
+                </button>
+                <button
+                  onClick={() => shareToSocialMedia("linkedin")}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Linkedin className="w-4 h-4 mr-3" />
+                  LinkedIn
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
