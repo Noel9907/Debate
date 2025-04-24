@@ -5,6 +5,7 @@ import generateTockenAndSetCookie from "../utils/generateTocken.js";
 export const signup = async (req, res) => {
   try {
     const { username, password, confirmpassword, gender } = req.body;
+    console.log("here");
 
     if (password !== confirmpassword) {
       return res.status(400).json({ error: "passwords dont match" });
@@ -62,11 +63,11 @@ export const login = async (req, res) => {
       user.password || ""
     );
     if (!user || !isPasswordCorrect) {
-      res.status(400).json({ error: "invalid user name or password" });
+      return res.status(400).json({ error: "invalid user name or password" });
     }
 
     generateTockenAndSetCookie(user._id, res);
-    res.status(200).json({
+    return res.status(200).json({
       _id: user._id,
       fullname: user.fullname,
       username: user.username,

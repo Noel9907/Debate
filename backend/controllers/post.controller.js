@@ -63,7 +63,8 @@ export const getPosts = async (req, res) => {
 export const like = async (req, res) => {
   try {
     const { postid, user, stance } = req.body;
-    console.log(postid);
+
+    console.log(postid + user + stance);
     const isThere = allThere(postid, user, stance);
     if (isThere) {
       // Find the post first to make sure it exists
@@ -73,7 +74,9 @@ export const like = async (req, res) => {
         return res.status(404).json({ error: "Post not found" });
       }
       const userId = user; // Assuming user is the user ID
+
       const userObjectId = new mongoose.Types.ObjectId(userId);
+
       // Check if stance is valid
       if (stance !== "like" && stance !== "dislike") {
         return res

@@ -8,25 +8,37 @@ import Login from "./pages/login/Login.jsx";
 import Profile from "./pages/profile/profile.jsx";
 import CreatePost from "./pages/home/CreatePosts.jsx";
 import Postpage from "./pages/home/post/Postpage.jsx";
+import Footernav from "../components/Footernav.jsx";
 
 function App() {
   const { authUser } = useAuthContext();
   return (
     <>
+      <div
+        className={
+          authUser
+            ? " min-h-screen bg-gradient-to-br pb-0 from-gray-900 to-black text-white flex flex-col"
+            : ""
+        }
+      >
+        <Routes>
+          <Route path="/test/:postid" element={<Postpage />} />
+          <Route
+            path="/"
+            element={authUser ? <Home /> : <Navigate to="/signup" />}
+          />
+          <Route
+            path="/createPosts"
+            element={authUser ? <CreatePost /> : <Navigate to={"/signup"} />}
+          />
+          <Route
+            path="/profile"
+            element={authUser ? <Profile /> : <Navigate to="/signup" />}
+          />
+        </Routes>
+        {authUser ? <Footernav /> : <></>}
+      </div>
       <Routes>
-        <Route path="/test/:postid" element={<Postpage />} />
-        <Route
-          path="/"
-          element={authUser ? <Home /> : <Navigate to="/signup" />}
-        />
-        <Route
-          path="/createPosts"
-          element={authUser ? <CreatePost /> : <Navigate to={"/signup"} />}
-        />
-        <Route
-          path="/profile"
-          element={authUser ? <Profile /> : <Navigate to="/signup" />}
-        />
         <Route
           path="/login"
           element={authUser ? <Navigate to="/" /> : <Login />}

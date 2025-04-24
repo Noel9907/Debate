@@ -21,6 +21,7 @@ import CommentComponent from "./CommentComponent";
 import useCreateComment from "../../../hooks/useCreateComment.js";
 import { useGetComments } from "../../../hooks/useGetComments.js";
 import { useGetPost } from "../../../hooks/useGetPosts.js";
+import { useLikes } from "../../../hooks/useLikes.js"; // Import the useLikes hook
 
 export default function Postpage() {
   const CurrentUser = JSON.parse(localStorage.getItem("duser"));
@@ -33,6 +34,10 @@ export default function Postpage() {
     username: "",
     likes: 0,
     dislikes: 0,
+
+    dislikes_count: 0,
+
+    likes_count: 0,
     text: "",
     title: "",
     categories: [],
@@ -48,26 +53,52 @@ export default function Postpage() {
     if (postid) {
       getPost(postid);
     }
-  }, [getPost, postid]);
-
+  }, [postid]);
   // Update local state when post data changes
   useEffect(() => {
     if (post && post._id) {
       setPostData(post);
+      // Initialize userVote based on whether user has liked or disliked
+      if (
+        post.likes &&
+        Array.isArray(post.likes) &&
+        post.likes.includes(CurrentUser?._id)
+      ) {
+        setUserVote("up");
+      } else if (
+        post.dislikes &&
+        Array.isArray(post.dislikes) &&
+        post.dislikes.includes(CurrentUser?._id)
+      ) {
+        setUserVote("down");
+      } else {
+        setUserVote(null);
+      }
     }
-  }, [post]);
+  }, [post, CurrentUser]);
 
-  const { _id, username, likes, dislikes, text, title, categories } = postData;
+  const {
+    _id,
+    username,
+    likes,
+    likes_count,
+    dislikes_count,
+    dislikes,
+    text,
+    title,
+    categories,
+  } = postData;
 
+  const { handleLike, likeLoading } = useLikes();
   // Upvote/downvote state functionality
-  const [upvotes, setUpvotes] = useState(likes || 0);
-  const [downvotes, setDownvotes] = useState(dislikes || 0);
+  const [upvotes, setUpvotes] = useState(likes_count || 0);
+  const [downvotes, setDownvotes] = useState(dislikes_count || 0);
   const [userVote, setUserVote] = useState(null);
 
   // Update vote counts when post data changes
   useEffect(() => {
-    setUpvotes(likes || 0);
-    setDownvotes(dislikes || 0);
+    setUpvotes(likes_count || 0);
+    setDownvotes(dislikes_count || 0);
   }, [likes, dislikes]);
 
   // Calculate net votes
@@ -111,38 +142,61 @@ export default function Postpage() {
     return num;
   };
 
-  // Upvote/downvote handlers
-  const handleUpvote = (e) => {
+  const handleUpvote = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (userVote === "up") {
-      setUpvotes(upvotes - 1);
-      setUserVote(null);
-    } else if (userVote === "down") {
-      setDownvotes(downvotes - 1);
-      setUpvotes(upvotes + 1);
-      setUserVote("up");
-    } else {
-      setUpvotes(upvotes + 1);
-      setUserVote("up");
+    if (!CurrentUser) {
+      alert("You need to be logged in to vote");
+      return;
+    }
+
+    // Don't allow actions while already loading
+    if (likeLoading) {
+      return;
+    }
+
+    try {
+      // Call API first without optimistic updates
+      await handleLike({
+        postid: _id,
+        user: CurrentUser._id,
+        stance: "like",
+      });
+
+      // After successful API call, fetch the updated post
+      getPost(postid);
+    } catch (error) {
+      console.error("Error handling upvote:", error);
     }
   };
 
-  const handleDownvote = (e) => {
+  const handleDownvote = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (userVote === "down") {
-      setDownvotes(downvotes - 1);
-      setUserVote(null);
-    } else if (userVote === "up") {
-      setUpvotes(upvotes - 1);
-      setDownvotes(downvotes + 1);
-      setUserVote("down");
-    } else {
-      setDownvotes(downvotes + 1);
-      setUserVote("down");
+    if (!CurrentUser) {
+      alert("You need to be logged in to vote");
+      return;
+    }
+
+    // Don't allow actions while already loading
+    if (likeLoading) {
+      return;
+    }
+
+    try {
+      // Call API first without optimistic updates
+      await handleLike({
+        postid: _id,
+        user: CurrentUser._id,
+        stance: "dislike",
+      });
+
+      // After successful API call, fetch the updated post
+      getPost(postid);
+    } catch (error) {
+      console.error("Error handling downvote:", error);
     }
   };
 
@@ -175,7 +229,7 @@ export default function Postpage() {
       };
 
       // Add the optimistic comment to the UI immediately
-      updateComments([optimisticComment, ...comments]);
+      updateComments([optimisticComment, comments]);
 
       // Clear the input
       setNewComment("");
@@ -381,11 +435,12 @@ export default function Postpage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleUpvote}
+                    disabled={likeLoading}
                     className={`flex items-center px-3 py-1 rounded-md hover:bg-gray-700 transition-colors ${
                       userVote === "up"
                         ? "text-green-400"
                         : "text-gray-400 hover:text-white"
-                    }`}
+                    } ${likeLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <ThumbsUp
                       className={`w-4 h-4 mr-2 ${
@@ -399,11 +454,12 @@ export default function Postpage() {
                   </button>
                   <button
                     onClick={handleDownvote}
+                    disabled={likeLoading}
                     className={`flex items-center px-3 py-1 rounded-md hover:bg-gray-700 transition-colors ${
                       userVote === "down"
                         ? "text-red-400"
                         : "text-gray-400 hover:text-white"
-                    }`}
+                    } ${likeLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <ThumbsDown
                       className={`w-4 h-4 mr-2 ${

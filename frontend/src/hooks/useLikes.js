@@ -10,7 +10,6 @@ export const useLikes = () => {
       toast.error("Missing required fields for like operation");
       return;
     }
-    console.log(postid);
     // Validate stance value
     if (stance !== "like" && stance !== "dislike") {
       toast.error("Invalid stance. Must be 'like' or 'dislike'");
@@ -18,7 +17,7 @@ export const useLikes = () => {
     }
 
     setLikeLoading(true);
-
+    console.log(import.meta.env.VITE_API_URL);
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/create/like`,
@@ -41,6 +40,7 @@ export const useLikes = () => {
       const data = await res.json();
 
       // Show appropriate toast message based on response
+      // toast.success(data.message);
 
       return data;
     } catch (error) {

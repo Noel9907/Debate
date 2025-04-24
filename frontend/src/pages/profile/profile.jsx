@@ -90,26 +90,6 @@ export default function Profile() {
           >
             SpeakUp
           </Link>
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/search"
-              className="text-white hover:text-red-400 transition-colors"
-            >
-              <Search className="w-6 h-6" />
-            </Link>
-            <Link
-              href="/notifications"
-              className="text-white hover:text-red-400 transition-colors"
-            >
-              <Bell className="w-6 h-6" />
-            </Link>
-            <Link
-              href="/profile"
-              className="text-white hover:text-red-400 transition-colors"
-            >
-              <UserCircle className="w-6 h-6" />
-            </Link>
-          </div>
         </div>
       </header>
 
@@ -220,13 +200,13 @@ export default function Profile() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 py-8">
+      {/* <footer className="bg-gray-900 py-8">
         <div className="container mx-auto px-4 text-center text-gray-400">
           <p>
             &copy; {new Date().getFullYear()} DebateHub. All rights reserved.
           </p>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }

@@ -14,10 +14,14 @@ import {
   X,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-
+import useLikes from "../../hooks/useLikes";
+import { useGetPost } from "../../hooks/useGetPosts";
+import { set } from "mongoose";
 export default function Posts({
   username,
   likes,
+  likesUsername,
+  dislikesUsername,
   categories,
   createdAt,
   dislikes,
@@ -27,18 +31,30 @@ export default function Posts({
   title,
 }) {
   const postid = id;
-  const [upvotes, setUpvotes] = useState(likes || 0);
-  const [downvotes, setDownvotes] = useState(dislikes);
-  const [userVote, setUserVote] = useState(null);
 
+  const CurrentUser = JSON.parse(localStorage.getItem("duser"))._id;
+  const { handleLike, likeLoading } = useLikes();
+  const { getPost, PostLoading, post } = useGetPost();
+  const [upvotes, setUpvotes] = useState(likes || 0);
+  const [downvotes, setDownvotes] = useState(dislikes || 0);
+  const [userVote, setUserVote] = useState(null);
   // Share functionality state
+
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareMenuRef = useRef(null);
-
   // Calculate net votes
   const netVotes = upvotes - downvotes;
-
+  useEffect(() => {
+    if (Array.isArray(likesUsername) && likesUsername.includes(CurrentUser)) {
+      setUserVote("up");
+    } else if (
+      Array.isArray(dislikesUsername) &&
+      dislikesUsername.includes(CurrentUser)
+    ) {
+      setUserVote("down");
+    }
+  }, [likesUsername, dislikesUsername, CurrentUser]);
   // Format large numbers to k, M format
   const formatNumber = (num) => {
     if (num >= 1000000) {
@@ -53,43 +69,80 @@ export default function Posts({
     return num;
   };
 
-  const handleUpvote = (e) => {
+  const handleUpvote = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (userVote === "up") {
-      // Remove upvote
-      setUpvotes(upvotes - 1);
-      setUserVote(null);
-    } else if (userVote === "down") {
-      // Change from downvote to upvote
-      setDownvotes(downvotes - 1);
-      setUpvotes(upvotes + 1);
-      setUserVote("up");
-    } else {
-      // New upvote
-      setUpvotes(upvotes + 1);
-      setUserVote("up");
+    if (!CurrentUser) {
+      alert("You need to be logged in to vote");
+      return;
+    }
+
+    // Don't allow actions while already loading
+    if (likeLoading) {
+      return;
+    }
+
+    try {
+      // Call API first without optimistic updates
+      await handleLike({
+        postid: postid,
+        user: CurrentUser,
+        stance: "like",
+      });
+      if (userVote == "up") {
+        setUserVote(null);
+        setUpvotes(likes ? likes - 1 : 0);
+      } else {
+        setUserVote("up");
+
+        setUpvotes(likesUsername.includes(CurrentUser) ? likes : likes + 1);
+      }
+
+      // // After successful API call, fetch the updated post
+      getPost(postid);
+    } catch (error) {
+      console.error("Error handling upvote:", error);
     }
   };
 
-  const handleDownvote = (e) => {
+  const handleDownvote = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (userVote === "down") {
-      // Remove downvote
-      setDownvotes(downvotes - 1);
-      setUserVote(null);
-    } else if (userVote === "up") {
-      // Change from upvote to downvote
-      setUpvotes(upvotes - 1);
-      setDownvotes(downvotes + 1);
-      setUserVote("down");
-    } else {
-      // New downvote
-      setDownvotes(downvotes + 1);
-      setUserVote("down");
+    if (!CurrentUser) {
+      alert("You need to be logged in to vote");
+      return;
+    }
+
+    // Don't allow actions while already loading
+    if (likeLoading) {
+      return;
+    }
+
+    try {
+      // Call API first without optimistic updates
+      await handleLike({
+        postid: postid,
+        user: CurrentUser,
+        stance: "dislike",
+      });
+
+      if (userVote == "down") {
+        setUserVote(null);
+        setDownvotes(dislikes ? dislikes - 1 : 0);
+      } else {
+        setUserVote("down");
+
+        setDownvotes(
+          dislikesUsername.includes(CurrentUser) ? dislikes : dislikes + 1
+        );
+      }
+
+      // After successful API call, fetch the updated post
+      getPost(postid);
+    } catch (error) {
+      console.error("Error handling downvote:", error);
     }
   };
 
@@ -152,7 +205,6 @@ export default function Posts({
     setShowShareMenu(false);
   };
 
-  // Close share menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (

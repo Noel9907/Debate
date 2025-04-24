@@ -56,27 +56,10 @@ const useGetAllPosts = () => {
 export const useGetPost = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [post, setPost] = useState({});
-  const [error, setError] = useState(null);
-  const abortControllerRef = useRef(null);
-  const postCacheRef = useRef({}); // Simple in-memory cache
+  const [error, setError] = useState(null); // Simple in-memory cache
 
   const getPost = async (postId) => {
     if (!postId) return null;
-
-    // Check cache first
-    if (postCacheRef.current[postId]) {
-      setPost(postCacheRef.current[postId]);
-      return postCacheRef.current[postId];
-    }
-
-    // Cancel any in-flight request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // Create new abort controller for this request
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
 
     try {
       setIsLoading(true);
@@ -89,7 +72,6 @@ export const useGetPost = () => {
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-          signal,
         }
       );
 
@@ -104,9 +86,6 @@ export const useGetPost = () => {
       }
 
       const postData = data[0] || {};
-
-      // Update cache
-      postCacheRef.current[postId] = postData;
 
       setPost(postData);
       return postData;
