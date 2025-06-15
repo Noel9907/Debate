@@ -50,9 +50,11 @@ export const post = async (req, res) => {
 export const getPosts = async (req, res) => {
   try {
     // const posts = Post.find().pretty();
-    Post.find({}).then((data) => {
-      res.status(200).json({ data: data });
-    });
+    Post.find({})
+      .limit(50)
+      .then((data) => {
+        res.status(200).json({ data: data });
+      });
     // const data = Post.find({});
   } catch (error) {
     console.log("error in createPost controller", error);

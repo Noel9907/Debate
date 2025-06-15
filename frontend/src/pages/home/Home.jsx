@@ -63,9 +63,10 @@ export default function Home() {
             )}
           </div>
         </div>
-
-        {/* <Footernav /> */}
       </main>
+      <footer className="sticky bottom-0 z-50 bg-gray-900">
+        <Footernav color={"home"} />
+      </footer>
     </div>
   );
 }

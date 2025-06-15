@@ -1,9 +1,10 @@
 import bcrypt from "bcryptjs";
-import User from "../models/user.model.js";
-import generateTockenAndSetCookie from "../utils/generateTocken.js";
+import User from "../../../models/user.model.js";
+import generateTockenAndSetCookie from "../../../utils/generateTocken.js";
 
 export const signup = async (req, res) => {
   try {
+    console.log("here");
     const { username, password, confirmpassword, gender } = req.body;
     console.log("here");
 

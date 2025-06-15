@@ -9,36 +9,40 @@ import Profile from "./pages/profile/profile.jsx";
 import CreatePost from "./pages/home/CreatePosts.jsx";
 import Postpage from "./pages/home/post/Postpage.jsx";
 import Footernav from "../components/Footernav.jsx";
+import SearchPage from "./pages/connect_page/search.jsx";
 
 function App() {
   const { authUser } = useAuthContext();
   return (
     <>
-      <div
-        className={
-          authUser
-            ? " min-h-screen bg-gradient-to-br pb-0 from-gray-900 to-black text-white flex flex-col"
-            : ""
-        }
-      >
-        <Routes>
-          <Route path="/test/:postid" element={<Postpage />} />
-          <Route
-            path="/"
-            element={authUser ? <Home /> : <Navigate to="/signup" />}
-          />
-          <Route
-            path="/createPosts"
-            element={authUser ? <CreatePost /> : <Navigate to={"/signup"} />}
-          />
-          <Route
-            path="/profile"
-            element={authUser ? <Profile /> : <Navigate to="/signup" />}
-          />
-        </Routes>
-        {authUser ? <Footernav /> : <></>}
-      </div>
       <Routes>
+        <Route path="/test/:postid" element={<Postpage />} />
+        <Route
+          path="/"
+          element={authUser ? <Home /> : <Navigate to="/signup" />}
+        />
+        <Route
+          path="/createPosts"
+          element={authUser ? <CreatePost /> : <Navigate to={"/signup"} />}
+        />
+        <Route
+          path="/profile"
+          element={authUser ? <Profile /> : <Navigate to="/signup" />}
+        />
+        {/* <Route
+          path="/search"
+          element={authUser ? <SearchPage /> : <Navigate to="/signup" />}
+        /> */}
+        <Route
+          path="/search"
+          element={authUser ? <SearchPage /> : <Navigate to={"/login"} />}
+        />
+        <Route
+          path="/topics"
+          element={
+            authUser ? <Navigate to={"/"} /> : <Navigate to={"/login"} />
+          }
+        />
         <Route
           path="/login"
           element={authUser ? <Navigate to="/" /> : <Login />}
@@ -56,6 +60,8 @@ function App() {
           element={authUser ? <DebateCommentPage /> : <Login />}
         /> */}
       </Routes>
+
+      {/* {authUser ? <Footernav /> : <></>} */}
       <ToastContainer />
     </>
   );

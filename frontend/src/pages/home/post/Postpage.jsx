@@ -22,6 +22,7 @@ import useCreateComment from "../../../hooks/useCreateComment.js";
 import { useGetComments } from "../../../hooks/useGetComments.js";
 import { useGetPost } from "../../../hooks/useGetPosts.js";
 import { useLikes } from "../../../hooks/useLikes.js"; // Import the useLikes hook
+import Footernav from "../../../../components/Footernav.jsx";
 
 export default function Postpage() {
   const CurrentUser = JSON.parse(localStorage.getItem("duser"));
@@ -628,13 +629,8 @@ export default function Postpage() {
           </>
         )}
       </main>
-
-      <footer className="bg-gray-900 py-8 mt-12">
-        <div className="container mx-auto px-4 text-center text-gray-400">
-          <p>
-            &copy; {new Date().getFullYear()} DebateHub. All rights reserved.
-          </p>
-        </div>
+      <footer className="sticky bottom-0 z-50 bg-gray-900">
+        <Footernav />
       </footer>
     </div>
   );

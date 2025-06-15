@@ -58,5 +58,7 @@ userSchema.virtual("comments", {
   foreignField: "username",
 });
 
+userSchema.index({ username: "text", interested_categories: "text" });
+
 const User = mongoose.model("User", userSchema);
 export default User;

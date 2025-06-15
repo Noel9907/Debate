@@ -1,5 +1,9 @@
 import express from "express";
-import { login, logout, signup } from "../controllers/auth.controller.js";
+import {
+  login,
+  logout,
+  signup,
+} from "../../controllers/user/auth/auth.controller.js";
 // import User from "../models/user.model.js";
 // import bcrypt from "bcryptjs";
 // import generateTockenAndSetCookie from "../utils/generateTocken.js";

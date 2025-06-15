@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/users/user.routes.js";
 import createRoutes from "./routes/create.routes.js";
 import getRoutes from "./routes/get.routes.js";
 
@@ -23,7 +23,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/create", createRoutes);
 app.use("/api/get", getRoutes);
 
