@@ -23,7 +23,7 @@ const useSignup = () => {
         gender,
       });
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/signup`,
+        `${import.meta.env.VITE_API_URL}/api/user/auth/signup`,
         {
           // mode: "no-cors",
           method: "POST",
