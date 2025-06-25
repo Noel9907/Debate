@@ -4,9 +4,7 @@ import generateTockenAndSetCookie from "../../../utils/generateTocken.js";
 
 export const signup = async (req, res) => {
   try {
-    console.log("here");
     const { username, password, confirmpassword, gender } = req.body;
-    console.log("here");
 
     if (password !== confirmpassword) {
       return res.status(400).json({ error: "passwords dont match" });

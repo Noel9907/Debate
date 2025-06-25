@@ -177,8 +177,6 @@ export default function SearchPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  // Update allUsers when searchedUsers changes
-  // Update allUsers when searchedUsers changes
   useEffect(() => {
     if (searchedUsers && searchType === "users") {
       if (currentOffset === 0) {

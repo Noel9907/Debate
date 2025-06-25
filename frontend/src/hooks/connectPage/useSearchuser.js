@@ -44,8 +44,7 @@ const useSearchUsers = () => {
       console.log(data);
       return data;
     } catch (error) {
-      // Only show toast for errors that aren't aborts
-      if (error.name !== "AbortError") {
+      if (error.name !== "AbortError" && error.users == "none") {
         toast.error(error.message || "Failed to fetch posts");
       }
       return [];
