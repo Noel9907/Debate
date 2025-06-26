@@ -5,7 +5,7 @@ import Comment from "../../models/comment.model.js"; // Assuming you have a Comm
 export const getPostsByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
-
+    console.log("first");
     // Extract pagination and sorting parameters from query
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;

@@ -227,7 +227,7 @@ export default function Posts({
     <div className="p-2 sm:p-3 transform hover:scale-100 sm:hover:scale-102 transition-transform duration-200">
       <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500 relative">
         <Link
-          to={`/test/${postid}`}
+          to={`/posts/${postid}`}
           state={{
             id,
             username,
