@@ -396,7 +396,10 @@ export default function Postpage() {
                   <h1 className="text-2xl font-bold text-white">{title}</h1>
                   <div className="flex flex-wrap text-sm text-gray-400">
                     <span className="mr-2">
-                      by <span className="text-blue-400">{username}</span>
+                      by{" "}
+                      <Link to={`/profile/${username}`}>
+                        <span className="text-blue-400">{username}</span>
+                      </Link>
                     </span>
                     <span className="mr-2">• {formattedDate}</span>
                     <span className="mr-2">• {readingTime} min read</span>

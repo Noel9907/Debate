@@ -26,7 +26,7 @@ function App() {
           element={authUser ? <CreatePost /> : <Navigate to={"/signup"} />}
         />
         <Route
-          path="/profile"
+          path="/profile/:username?"
           element={authUser ? <Profile /> : <Navigate to="/signup" />}
         />
         {/* <Route

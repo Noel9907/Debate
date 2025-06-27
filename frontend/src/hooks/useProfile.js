@@ -6,7 +6,7 @@ export const useProfileStats = () => {
   const [profileStats, setProfileStats] = useState(null);
   const abortControllerRef = useRef(null);
 
-  const getProfileStats = useCallback(async (userId) => {
+  const getProfileStats = useCallback(async (username) => {
     // Cancel any in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -21,7 +21,7 @@ export const useProfileStats = () => {
       const res = await fetch(
         `${
           import.meta.env.VITE_API_URL
-        }/api/get/profile/getuserstats/${userId}`,
+        }/api/get/profile/getuserstats/${username}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -64,7 +64,7 @@ export const usePostStats = () => {
   const [hasMore, setHasMore] = useState(true);
   const abortControllerRef = useRef(null);
 
-  const getPostStats = useCallback(async (userId, page = 1, limit = 5) => {
+  const getPostStats = useCallback(async (username, page = 1, limit = 5) => {
     // Cancel any in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -79,7 +79,7 @@ export const usePostStats = () => {
       const res = await fetch(
         `${
           import.meta.env.VITE_API_URL
-        }/api/get/profile/getpoststats/${userId}?page=${page}&limit=${limit}`,
+        }/api/get/profile/getpoststats/${username}?page=${page}&limit=${limit}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -126,17 +126,17 @@ export const usePostStats = () => {
   }, []);
 
   const loadMorePosts = useCallback(
-    async (userId, currentPage, limit = 5) => {
-      return await getPostStats(userId, currentPage + 1, limit);
+    async (username, currentPage, limit = 5) => {
+      return await getPostStats(username, currentPage + 1, limit);
     },
     [getPostStats]
   );
 
   const refreshPosts = useCallback(
-    async (userId, limit = 5) => {
+    async (username, limit = 5) => {
       setPosts([]);
       setHasMore(true);
-      return await getPostStats(userId, 1, limit);
+      return await getPostStats(username, 1, limit);
     },
     [getPostStats]
   );

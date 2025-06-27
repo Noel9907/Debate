@@ -1,12 +1,11 @@
 import express from "express";
 import {
-  getPostsByUserId,
-  getPostsByUserIdWithStats,
+  getPostsByUsernameWithStats,
   getUserDebateStats,
 } from "../controllers/forUser/profile.controller.js";
 const router = express.Router();
-router.get("/getpostbyid/:userId", getPostsByUserId);
-router.get("/getpoststats/:userId", getPostsByUserIdWithStats);
-router.get("/getuserstats/:userId", getUserDebateStats);
+router.get("/getuserdetails/:username");
+router.get("/getpoststats/:username", getPostsByUsernameWithStats);
+router.get("/getuserstats/:username", getUserDebateStats);
 
 export default router;

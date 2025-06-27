@@ -4,6 +4,7 @@ import { HomeIcon, Search, Cloud, User } from "lucide-react";
 import useGetAllPosts from "../../hooks/useGetPosts";
 import Post from "./Post";
 import Footernav from "../../../components/Footernav";
+import Topbar from "../../../components/Topbar";
 
 export default function Home() {
   const { getPosts, loading, posts } = useGetAllPosts();
@@ -31,12 +32,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Header - Simplified as per sketch */}
-      <header className="bg-gray-900 bg-opacity-80 backdrop-blur-md py-4 px-4 sticky top-0 z-50 border-b border-gray-800">
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-2xl font-bold text-red-500">SpeakUp</h1>
-        </div>
-      </header>
+      <Topbar />
 
       {/* Main Content - Feed style layout as per sketch */}
       <main className="flex-grow overflow-y-auto">
