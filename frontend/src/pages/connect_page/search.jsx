@@ -14,7 +14,7 @@ import {
 import { Link } from "react-router-dom";
 import Footernav from "../../../components/Footernav";
 import useSearchUsers from "../../hooks/connectPage/useSearchuser";
-import ProfileCard from "./profile"; // Import the ProfileCard component
+import ProfileCard from "./profile";
 
 export default function SearchPage() {
   const { loading, User: searchedUsers, searchUsers } = useSearchUsers();

@@ -28,6 +28,7 @@ const useSignup = () => {
           // mode: "no-cors",
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             username,
             password,

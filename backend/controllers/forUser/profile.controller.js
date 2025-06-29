@@ -105,7 +105,10 @@ export const getUserDebateStats = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
+        _id: user._id,
         username: user.username,
+        trackers: user.followers_count,
+        tracking: user.following_count,
         debatesJoined, // Unique debates commented on
         profilepic: user.profilepic,
         winRate: postStats.winRate, // Win rate of their own posts

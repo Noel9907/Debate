@@ -14,8 +14,9 @@ export default function Home() {
   }, [getPosts]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-      <style>{`
+    <>
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
+        <style>{`
         /* Custom scrollbar styles */
         ::-webkit-scrollbar {
           width: 5px;
@@ -32,37 +33,36 @@ export default function Home() {
         }
       `}</style>
 
-      <Topbar />
+        <Topbar />
 
-      {/* Main Content - Feed style layout as per sketch */}
-      <main className="flex-grow overflow-y-auto">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="space-y-4">
-            {loading ? (
-              <div className="text-center py-10">Loading debates...</div>
-            ) : (
-              posts.map((post, index) => (
-                <Post
-                  key={index}
-                  username={post.username}
-                  title={post.title}
-                  id={post._id}
-                  text={post.text}
-                  likes={post.likes_count}
-                  likesUsername={post.likes}
-                  dislikesUsername={post.dislikes}
-                  comments={post.comments_count}
-                  dislikes={post.dislikes_count}
-                  categories={post.categories}
-                />
-              ))
-            )}
+        {/* Main Content - Feed style layout as per sketch */}
+        <main className="flex-grow overflow-y-auto">
+          <div className="max-w-lg mx-auto px-4 py-4">
+            <div className="space-y-4">
+              {loading ? (
+                <div className="text-center py-10">Loading debates...</div>
+              ) : (
+                posts.map((post, index) => (
+                  <Post
+                    key={index}
+                    username={post.username}
+                    title={post.title}
+                    id={post._id}
+                    text={post.text}
+                    likes={post.likes_count}
+                    likesUsername={post.likes}
+                    dislikesUsername={post.dislikes}
+                    comments={post.comments_count}
+                    dislikes={post.dislikes_count}
+                    categories={post.categories}
+                  />
+                ))
+              )}
+            </div>
           </div>
-        </div>
-      </main>
-      <footer className="sticky bottom-0 z-50 bg-gray-900">
-        <Footernav color={"home"} />
-      </footer>
-    </div>
+        </main>
+      </div>
+      <Footernav color={"home"} />
+    </>
   );
 }

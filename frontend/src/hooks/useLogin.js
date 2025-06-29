@@ -15,10 +15,11 @@ const useLogin = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        `${import.meta.env.VITE_API_URL}/api/user/auth/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             username,
             password,

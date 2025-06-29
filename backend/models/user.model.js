@@ -7,14 +7,13 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      lowercase: true, // Store lowercase for case-insensitive queries
+      lowercase: true,
       index: true,
     },
     password: {
       type: String,
       required: true,
       minlength: 6,
-      select: false, // Don't include password in query results by default
     },
     gender: {
       type: String,
@@ -22,6 +21,23 @@ const userSchema = new mongoose.Schema(
       enum: ["male", "female"],
     },
     profilepic: {
+      type: String,
+      default: "",
+    },
+    // Profile information
+    bio: {
+      type: String,
+      default: "",
+      maxlength: 160, // Instagram-like bio limit
+    },
+    // email: {
+    //   type: String,
+    //   required: true,
+    //   unique: true,
+    //   lowercase: true,
+    //   trim: true,
+    // },
+    location: {
       type: String,
       default: "",
     },
@@ -37,6 +53,25 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Follower/following counts (your "trackers/tracking")
+    followers_count: {
+      type: Number,
+      default: 0,
+    },
+    following_count: {
+      type: Number,
+      default: 0,
+    },
+    // Global ranking system
+    global_rank: {
+      type: Number,
+      default: null,
+    },
+    // Points/score for ranking calculation
+    debate_points: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -45,7 +80,21 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Virtual references
+// Virtual for getting followers
+userSchema.virtual("followers", {
+  ref: "Follow",
+  localField: "_id",
+  foreignField: "following",
+});
+
+// Virtual for getting following
+userSchema.virtual("following", {
+  ref: "Follow",
+  localField: "_id",
+  foreignField: "follower",
+});
+
+// Existing virtuals
 userSchema.virtual("posts", {
   ref: "DebatePost",
   localField: "_id",
@@ -61,4 +110,5 @@ userSchema.virtual("comments", {
 userSchema.index({ username: "text", interested_categories: "text" });
 
 const User = mongoose.model("User", userSchema);
+
 export default User;

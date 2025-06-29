@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Footernav from "../../../components/Footernav";
 import { usePostStats, useProfileStats } from "../../hooks/useProfile.js";
+import useFollow from "../../hooks/useFollow.js"; // Import your useFollow hook
 import Topbar from "../../../components/Topbar.jsx";
 
 const userInfo = {
@@ -41,19 +42,28 @@ export default function Profile(z) {
     hasMore,
     loading: postsLoading,
   } = usePostStats();
+
+  // Use your follow hook
+  const {
+    loading: followLoading,
+    followUser,
+    unfollowUser,
+    checkFollowStatus,
+  } = useFollow();
+
   const [currentPage, setCurrentPage] = useState(1);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingCount, setTrackingCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [userRank, setUserRank] = useState(null);
-  const [trackingLoading, setTrackingLoading] = useState(false);
 
   const username = useParams();
   const user =
     username.username || JSON.parse(localStorage.getItem("duser")).username;
   const currentUser = JSON.parse(localStorage.getItem("duser"));
   const isOwnProfile = user === currentUser?.username;
-
+  const profileUserId = profileStats?._id || profileStats?.userId;
+  console.log(profileUserId);
   useEffect(() => {
     if (user) {
       getProfileStats(user);
@@ -62,9 +72,26 @@ export default function Profile(z) {
       setTrackingCount(Math.floor(Math.random() * 500) + 50);
       setFollowersCount(Math.floor(Math.random() * 1000) + 100);
       setUserRank(Math.floor(Math.random() * 1000) + 1);
-      setIsTracking(Math.random() > 0.5); // Random initial state
     }
   }, [user, getProfileStats, getPostStats]);
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      console.log("first");
+      if (profileUserId && !isOwnProfile) {
+        try {
+          const status = await checkFollowStatus(profileUserId);
+          setIsTracking(status);
+        } catch (error) {
+          console.error("Error checking follow status:", error);
+        }
+      }
+    };
+
+    if (profileUserId) {
+      checkStatus();
+    }
+  }, [profileUserId, isOwnProfile, checkFollowStatus]);
 
   const handleLoadMore = async () => {
     if (user && hasMore && !postsLoading) {
@@ -75,24 +102,21 @@ export default function Profile(z) {
   };
 
   const handleTrackToggle = async () => {
-    if (trackingLoading) return;
+    if (!profileUserId || followLoading) return;
 
-    setTrackingLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       if (isTracking) {
+        await unfollowUser(profileUserId);
         setIsTracking(false);
-        setFollowersCount((prev) => prev - 1);
+        setFollowersCount((prev) => Math.max(0, prev - 1));
       } else {
+        await followUser(profileUserId);
         setIsTracking(true);
         setFollowersCount((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("Error toggling track status:", error);
-    } finally {
-      setTrackingLoading(false);
+      console.error("Error toggling follow status:", error);
+      // Optionally show an error toast here if not handled in the hook
     }
   };
 
@@ -169,7 +193,7 @@ export default function Profile(z) {
                   <div className="flex justify-center lg:justify-start gap-8 mb-6">
                     <div className="text-center">
                       <p className="text-3xl font-bold text-red-400">
-                        {trackingCount}
+                        {profileStats?.tracking || 0}
                       </p>
                       <p className="text-sm text-gray-400 uppercase tracking-wide">
                         Tracking
@@ -177,7 +201,7 @@ export default function Profile(z) {
                     </div>
                     <div className="text-center">
                       <p className="text-3xl font-bold text-red-400">
-                        {followersCount}
+                        {profileStats?.trackers || 0}
                       </p>
                       <p className="text-sm text-gray-400 uppercase tracking-wide">
                         Trackers
@@ -225,14 +249,14 @@ export default function Profile(z) {
                   ) : (
                     <button
                       onClick={handleTrackToggle}
-                      disabled={trackingLoading}
+                      disabled={followLoading || !profileUserId}
                       className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center min-w-[140px] justify-center shadow-lg ${
                         isTracking
                           ? "bg-gray-600 hover:bg-gray-700 text-white border border-gray-500"
                           : "bg-red-500 hover:bg-red-600 text-white hover:shadow-red-500/25"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {trackingLoading ? (
+                      {followLoading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : isTracking ? (
                         <>
