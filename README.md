@@ -23,8 +23,10 @@
 
 #### Search & Discovery
 
-<img src="/screenshots/i.png" alt="Search Results" width="250"/>
-<img src="/screenshots/t.png" alt="Trending Topics" width="250"/>
+<div style="display: flex; gap: 10px;">
+  <img src="/screenshots/i.png" alt="Search Results" width="250"/>
+  <img src="/screenshots/t.png" alt="Trending Topics" width="250"/>
+</div>
 
 </details>
 
@@ -40,17 +42,19 @@
 
 ### 🏠 Home Feed
 
-![Home Feed](/screenshots/u.png)
+### 🏠 Home Feed
+
+<img src="/screenshots/u.png" alt="Home Feed" width="300"/>  
 _Browse trending debates and discover new topics_
 
 ### 💬 Debate Interface
 
-![Debate Interface](/screenshots/comment.png)
+<img src="/screenshots/comment.png" alt="Debate Interface" width="300"/>  
 _Structured Pro/Con comment system for clear discourse_
 
 ### 👤 User Profile
 
-![User Profile](/screenshots/Scr.png)
+<img src="/screenshots/Scr.png" alt="User Profile" width="300"/>  
 _Track your debate history and contributions_
 
 </div>
