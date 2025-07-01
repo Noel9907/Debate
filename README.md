@@ -42,9 +42,7 @@
 
 ### 🏠 Home Feed
 
-### 🏠 Home Feed
-
-<img src="/screenshots/u.png" alt="Home Feed" width="300"/>  
+<img src="/screenshots/u.png" alt="Home Feed" width="300"/> <br>
 _Browse trending debates and discover new topics_
 
 ### 💬 Debate Interface
