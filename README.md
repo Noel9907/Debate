@@ -42,7 +42,7 @@
 
 ### 🏠 Home Feed
 
-<div style="display: flex; gap: 50px;">
+<div style="display: flex;">
 <img src="/screenshots/u.png" alt="Home Feed" width="300"/> <br>
 _Browse trending debates and discover new topics_
 
@@ -52,6 +52,7 @@ _Browse trending debates and discover new topics_
 _Structured Pro/Con comment system for clear discourse_
 
 </div>
+
 ### 👤 User Profile
 
 <img src="/screenshots/Scr.png" alt="User Profile" width="300"/> <br>
