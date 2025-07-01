@@ -26,8 +26,7 @@ const userInfo = {
   name: "Jane Doe",
   username: "@janedoe",
   bio: "Passionate debater | Tech enthusiast | Always learning",
-  location: "New York, NY",
-  email: "jane.doe@example.com",
+
   joinDate: "January 2023",
   avatar: "/placeholder.svg?height=200&width=200",
 };
@@ -217,22 +216,6 @@ export default function Profile(z) {
                         </p>
                       </div>
                     )}
-                  </div>
-
-                  {/* Meta Info */}
-                  <div className="flex flex-wrap justify-center lg:justify-start gap-6 text-sm text-gray-400 mb-6">
-                    <span className="flex items-center hover:text-gray-300 transition-colors">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      {userInfo.location}
-                    </span>
-                    <span className="flex items-center hover:text-gray-300 transition-colors">
-                      <Mail className="w-4 h-4 mr-2" />
-                      {userInfo.email}
-                    </span>
-                    <span className="flex items-center hover:text-gray-300 transition-colors">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Joined {userInfo.joinDate}
-                    </span>
                   </div>
                 </div>
 
