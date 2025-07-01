@@ -40,9 +40,10 @@
 
 <div align="center">
 
+<div style="display: flex;">
+
 ### 🏠 Home Feed
 
-<div style="display: flex;">
 <img src="/screenshots/u.png" alt="Home Feed" width="300"/> <br>
 _Browse trending debates and discover new topics_
 
