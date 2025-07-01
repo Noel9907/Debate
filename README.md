@@ -19,12 +19,12 @@
 
 #### Debate Creation
 
-![Create Debate](/screenshots/k.png)
+<img src="/screenshots/k.png" alt="Create Debate" width="300"/>
 
 #### Search & Discovery
 
-![Search Results](/screenshots/i.png)
-![Trending Topics](/screenshots/t.png)
+<img src="/screenshots/i.png" alt="Search Results" width="250"/>
+<img src="/screenshots/t.png" alt="Trending Topics" width="250"/>
 
 </details>
 
