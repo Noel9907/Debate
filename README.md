@@ -38,22 +38,25 @@
 
 ## 📸 Screenshots
 
-<div align="center">
+<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
 
-### 🏠 Home Feed
+  <div style="text-align: center; width: 300px;">
+    <h3>🏠 Home Feed</h3>
+    <img src="/screenshots/u.png" alt="Home Feed" width="100%"/>
+    <em>Browse trending debates and discover new topics</em>
+  </div>
 
-<img src="/screenshots/u.png" alt="Home Feed" width="300"/> <br>
-_Browse trending debates and discover new topics_
+  <div style="text-align: center; width: 300px;">
+    <h3>💬 Debate Interface</h3>
+    <img src="/screenshots/comment.png" alt="Debate Interface" width="100%"/>
+    <em>Structured Pro/Con comment system for clear discourse</em>
+  </div>
 
-### 💬 Debate Interface
-
-<img src="/screenshots/comment.png" alt="Debate Interface" width="300"/>  
-_Structured Pro/Con comment system for clear discourse_
-
-### 👤 User Profile
-
-<img src="/screenshots/Scr.png" alt="User Profile" width="300"/>  
-_Track your debate history and contributions_
+  <div style="text-align: center; width: 300px;">
+    <h3>👤 User Profile</h3>
+    <img src="/screenshots/Scr.png" alt="User Profile" width="100%"/>
+    <em>Track your debate history and contributions</em>
+  </div>
 
 </div>
 
