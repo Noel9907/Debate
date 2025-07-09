@@ -147,101 +147,265 @@ export class RankingService {
     return newAchievements;
   }
 
-  // Get global leaderboard
+  // Get global leaderboard - prioritizing debate win rate
   static async getGlobalLeaderboard(page = 1, limit = 50) {
     const skip = (page - 1) * limit;
 
-    const users = await User.find({})
-      .select("-password")
-      .sort({
-        total_score: -1,
-        win_rate: -1,
-        debates_won: -1,
-        createdAt: 1,
-      })
-      .skip(skip)
-      .limit(limit);
-
-    const totalUsers = await User.countDocuments();
-
-    return {
-      users,
-      currentPage: page,
-      totalPages: Math.ceil(totalUsers / limit),
-      totalUsers,
-    };
-  }
-
-  // Get category leaderboard
-  static async getCategoryLeaderboard(category, page = 1, limit = 50) {
-    const skip = (page - 1) * limit;
-
+    // Only include users who have participated in at least one debate
     const users = await User.find({
-      [`category_expertise.${category}`]: { $exists: true },
+      debates_participated: { $gt: 0 }, // Must have participated in at least 1 debate
     })
       .select("-password")
       .sort({
-        [`category_expertise.${category}.points`]: -1,
-        [`category_expertise.${category}.wins`]: -1,
-        total_score: -1,
+        win_rate: -1, // PRIMARY: Highest win rate first
+        debates_won: -1, // SECONDARY: Most wins (for ties in win rate)
+        debates_participated: -1, // TERTIARY: Most debates participated (shows experience)
+        total_score: -1, // QUATERNARY: Highest total score
+        createdAt: -1, // FINAL: Newest account first (tie-breaker)
       })
       .skip(skip)
       .limit(limit);
 
     const totalUsers = await User.countDocuments({
-      [`category_expertise.${category}`]: { $exists: true },
+      debates_participated: { $gt: 0 },
     });
 
     return {
       users,
-      category,
       currentPage: page,
       totalPages: Math.ceil(totalUsers / limit),
       totalUsers,
     };
   }
 
-  // Get user's rank and nearby users
+  // Get qualified debaters leaderboard (minimum debate threshold)
+  static async getQualifiedLeaderboard(page = 1, limit = 50, minDebates = 5) {
+    const skip = (page - 1) * limit;
+
+    // Only include users who have participated in minimum number of debates
+    const users = await User.find({
+      debates_participated: { $gte: minDebates },
+    })
+      .select("-password")
+      .sort({
+        win_rate: -1, // PRIMARY: Highest win rate first
+        debates_won: -1, // SECONDARY: Most wins
+        debates_participated: -1, // TERTIARY: Most debates participated
+        total_score: -1, // QUATERNARY: Highest total score
+        createdAt: -1, // FINAL: Newest account first
+      })
+      .skip(skip)
+      .limit(limit);
+
+    const totalUsers = await User.countDocuments({
+      debates_participated: { $gte: minDebates },
+    });
+
+    return {
+      users,
+      currentPage: page,
+      totalPages: Math.ceil(totalUsers / limit),
+      totalUsers,
+      minDebates,
+    };
+  }
+
+  // Updated category leaderboard to handle both category-specific and global leaderboards
+  static async getCategoryLeaderboard(category = null, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+
+    try {
+      // If no category specified, return global leaderboard
+      if (!category) {
+        return await this.getGlobalLeaderboard(page, limit);
+      }
+
+      const leaderboard = await User.aggregate([
+        {
+          $lookup: {
+            from: "debateposts", // Your posts collection name
+            localField: "_id",
+            foreignField: "author_id",
+            as: "posts",
+          },
+        },
+        {
+          $addFields: {
+            categoryPosts: {
+              $filter: {
+                input: "$posts",
+                as: "post",
+                cond: {
+                  $and: [
+                    { $isArray: "$post.categories" },
+                    { $in: [category, "$post.categories"] },
+                  ],
+                },
+              },
+            },
+            allPosts: "$posts", // Keep all posts for fallback
+          },
+        },
+        {
+          $addFields: {
+            totalEngagement: {
+              $sum: {
+                $map: {
+                  input: "$categoryPosts",
+                  as: "post",
+                  in: {
+                    $add: [
+                      { $ifNull: ["$post.likes_count", 0] },
+                      { $ifNull: ["$post.dislikes_count", 0] },
+                      { $ifNull: ["$post.comments_count", 0] },
+                    ],
+                  },
+                },
+              },
+            },
+            totalPosts: { $size: "$categoryPosts" },
+          },
+        },
+        {
+          $match: {
+            totalPosts: { $gt: 0 }, // Only users with posts in this category
+          },
+        },
+        {
+          $sort: {
+            totalEngagement: -1,
+            totalPosts: -1,
+            createdAt: -1,
+          },
+        },
+        {
+          $facet: {
+            users: [
+              {
+                $group: {
+                  _id: null,
+                  users: { $push: "$ROOT" },
+                },
+              },
+              {
+                $unwind: {
+                  path: "$users",
+                  includeArrayIndex: "rank",
+                },
+              },
+              {
+                $addFields: {
+                  "users.rank": { $add: ["$rank", 1] },
+                },
+              },
+              {
+                $replaceRoot: { newRoot: "$users" },
+              },
+              {
+                $skip: skip,
+              },
+              {
+                $limit: limit,
+              },
+              {
+                $project: {
+                  username: 1,
+                  profilePicture: 1,
+                  rank: 1,
+                  totalEngagement: 1,
+                  totalPosts: 1,
+                  createdAt: 1,
+                },
+              },
+            ],
+            totalCount: [{ $count: "total" }],
+          },
+        },
+      ]);
+
+      const users = leaderboard[0].users || [];
+      const totalUsers = leaderboard[0].totalCount[0]?.total || 0;
+
+      return {
+        users,
+        category,
+        currentPage: page,
+        totalPages: Math.ceil(totalUsers / limit),
+        totalUsers,
+      };
+    } catch (error) {
+      console.error("Error in getCategoryLeaderboard:", error);
+      throw error;
+    }
+  }
+
+  // Get user's rank and nearby users - using win rate focused ranking
   static async getUserRankContext(userId, range = 5) {
     const user = await User.findById(userId).select("-password");
     if (!user) throw new Error("User not found");
 
-    // Get users ranked higher
+    // Get users ranked higher (using win rate as primary criteria)
     const higherRanked = await User.find({
+      debates_participated: { $gt: 0 }, // Only users with debate experience
       $or: [
-        { total_score: { $gt: user.total_score } },
+        { win_rate: { $gt: user.win_rate } },
         {
-          total_score: user.total_score,
-          win_rate: { $gt: user.win_rate },
-        },
-        {
-          total_score: user.total_score,
           win_rate: user.win_rate,
           debates_won: { $gt: user.debates_won },
+        },
+        {
+          win_rate: user.win_rate,
+          debates_won: user.debates_won,
+          debates_participated: { $gt: user.debates_participated },
+        },
+        {
+          win_rate: user.win_rate,
+          debates_won: user.debates_won,
+          debates_participated: user.debates_participated,
+          total_score: { $gt: user.total_score },
         },
       ],
     })
       .select("-password")
-      .sort({ total_score: -1, win_rate: -1, debates_won: -1 })
+      .sort({
+        win_rate: -1,
+        debates_won: -1,
+        debates_participated: -1,
+        total_score: -1,
+        createdAt: -1,
+      })
       .limit(range);
 
     // Get users ranked lower
     const lowerRanked = await User.find({
+      debates_participated: { $gt: 0 }, // Only users with debate experience
       $or: [
-        { total_score: { $lt: user.total_score } },
+        { win_rate: { $lt: user.win_rate } },
         {
-          total_score: user.total_score,
-          win_rate: { $lt: user.win_rate },
-        },
-        {
-          total_score: user.total_score,
           win_rate: user.win_rate,
           debates_won: { $lt: user.debates_won },
+        },
+        {
+          win_rate: user.win_rate,
+          debates_won: user.debates_won,
+          debates_participated: { $lt: user.debates_participated },
+        },
+        {
+          win_rate: user.win_rate,
+          debates_won: user.debates_won,
+          debates_participated: user.debates_participated,
+          total_score: { $lt: user.total_score },
         },
       ],
     })
       .select("-password")
-      .sort({ total_score: -1, win_rate: -1, debates_won: -1 })
+      .sort({
+        win_rate: -1,
+        debates_won: -1,
+        debates_participated: -1,
+        total_score: -1,
+        createdAt: -1,
+      })
       .limit(range);
 
     const userRank = higherRanked.length + 1;

@@ -3,6 +3,7 @@ import {
   awardDebatePoints,
   awardEngagementPoints,
   getCategoryLeaderboard,
+  getGlobalLeaderboard,
   getUserRank,
   getUserStats,
   updateGlobalRankings,
@@ -12,7 +13,7 @@ import protectRoute from "../middlewares/protectRoute.js";
 const router = express.Router();
 
 // Public routes
-router.get("/leaderboard/global", getCategoryLeaderboard);
+router.get("/leaderboard/global", getGlobalLeaderboard);
 router.get("/leaderboard/category/:category", getCategoryLeaderboard);
 router.get("/user/:userId/rank", getUserRank);
 router.get("/user/:userId/stats", getUserStats);

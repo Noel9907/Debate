@@ -1,7 +1,5 @@
 import RankingService from "../../services/RankingService.js";
 import User from "../../models/user.model.js";
-
-// Get global leaderboard
 export const getGlobalLeaderboard = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -14,6 +12,7 @@ export const getGlobalLeaderboard = async (req, res) => {
       data: leaderboard,
     });
   } catch (error) {
+    console.error("Error in getGlobalLeaderboard:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching global leaderboard",
@@ -22,15 +21,49 @@ export const getGlobalLeaderboard = async (req, res) => {
   }
 };
 
-// Get category leaderboard
+// Get qualified leaderboard (users with minimum debate threshold)
+export const getQualifiedLeaderboard = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const minDebates = parseInt(req.query.minDebates) || 5;
+
+    const leaderboard = await RankingService.getQualifiedLeaderboard(
+      page,
+      limit,
+      minDebates
+    );
+
+    res.status(200).json({
+      success: true,
+      data: leaderboard,
+    });
+  } catch (error) {
+    console.error("Error in getQualifiedLeaderboard:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching qualified leaderboard",
+      error: error.message,
+    });
+  }
+};
+
 export const getCategoryLeaderboard = async (req, res) => {
   try {
     const { category } = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
 
+    console.log("Querying category:", category || "global"); // Debug log
+
+    // Handle null/undefined category - pass null to get global leaderboard
+    const categoryParam =
+      category && category !== "null" && category !== "undefined"
+        ? category
+        : null;
+
     const leaderboard = await RankingService.getCategoryLeaderboard(
-      category,
+      categoryParam,
       page,
       limit
     );
@@ -40,6 +73,7 @@ export const getCategoryLeaderboard = async (req, res) => {
       data: leaderboard,
     });
   } catch (error) {
+    console.log("Error in getCategoryLeaderboard:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching category leaderboard",
