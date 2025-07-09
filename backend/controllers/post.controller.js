@@ -1,43 +1,50 @@
 import mongoose from "mongoose";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
+import RankingService from "../services/RankingService.js";
 
 export const createPost = async (req, res) => {
   try {
     const { username, text, author_id, categories, title } = req.body;
-    const isthere = await User.findOne({ username: username });
-    console.log(title);
-    if (isthere) {
-      const post = new Post({
-        username,
-        text,
-        title,
-        author_id,
-        categories,
-      });
-      await post.save();
-      res.status(201).json({
-        id: post.id,
-        username: post.username,
-        title: post.title,
-        text: post.text,
-        author_id: post.author_id,
-        categories: post.categories,
-        // postedBy: post.postedBy,
-      });
-    } else {
-      throw "no existing user";
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
+
+    // Create and save the new post
+    const post = new Post({
+      username,
+      text,
+      title,
+      author_id,
+      categories,
+    });
+
+    await post.save();
+
+    // Use the new ranking service to award points
+    await RankingService.awardEngagementPoints(user._id, "post");
+
+    res.status(201).json({
+      id: post.id,
+      username: post.username,
+      title: post.title,
+      text: post.text,
+      author_id: post.author_id,
+      categories: post.categories,
+    });
   } catch (error) {
     console.log("error in createPost controller", error);
-    res.status(500).json({ error: "internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
+
 export const post = async (req, res) => {
   try {
     const { postid } = req.query;
     if (!postid) {
-      throw new Error("no POst id");
+      throw new Error("no Post id");
     }
 
     const post = await Post.find({ _id: postid }).then((data) => {
@@ -47,17 +54,37 @@ export const post = async (req, res) => {
     res.status(400).json("error in getting post controller");
   }
 };
+
 export const getPosts = async (req, res) => {
   try {
-    // const posts = Post.find().pretty();
-    Post.find({})
-      .limit(50)
-      .then((data) => {
-        res.status(200).json({ data: data });
-      });
-    // const data = Post.find({});
+    const limit = parseInt(req.query.limit) || 50;
+
+    const posts = await Post.aggregate([
+      {
+        $addFields: {
+          engagementScore: {
+            $add: [
+              { $multiply: ["$likes_count", 2] }, // Likes worth 2 points
+              { $multiply: ["$dislikes_count", 1] }, // Dislikes worth 1 point
+              { $multiply: ["$comments_count", 3] }, // Comments worth 3 points
+            ],
+          },
+        },
+      },
+      {
+        $sort: {
+          engagementScore: -1,
+          createdAt: -1,
+        },
+      },
+      {
+        $limit: limit,
+      },
+    ]);
+
+    res.status(200).json({ data: posts });
   } catch (error) {
-    console.log("error in createPost controller", error);
+    console.log("error in getPosts controller", error);
     res.status(500).json({ error: "internal server error" });
   }
 };
@@ -99,6 +126,17 @@ export const like = async (req, res) => {
             $pull: { likes: userObjectId },
             $inc: { likes_count: -1 },
           });
+
+          // Remove like points from post author
+          const postAuthor = await User.findById(post.author_id);
+          if (postAuthor) {
+            await RankingService.awardEngagementPoints(
+              postAuthor._id,
+              "like_received",
+              -1
+            );
+          }
+
           return res.status(200).json({ message: "Post unliked successfully" });
         } else {
           // Remove from dislikes if present
@@ -114,6 +152,17 @@ export const like = async (req, res) => {
             $addToSet: { likes: userObjectId },
             $inc: { likes_count: 1 },
           });
+
+          // Award points to post author for receiving a like
+          const postAuthor = await User.findById(post.author_id);
+          if (postAuthor) {
+            await RankingService.awardEngagementPoints(
+              postAuthor._id,
+              "like_received",
+              1
+            );
+          }
+
           return res.status(200).json({ message: "Post liked successfully" });
         }
       }
@@ -136,6 +185,16 @@ export const like = async (req, res) => {
               $pull: { likes: userObjectId },
               $inc: { likes_count: -1 },
             });
+
+            // Remove like points from post author
+            const postAuthor = await User.findById(post.author_id);
+            if (postAuthor) {
+              await RankingService.awardEngagementPoints(
+                postAuthor._id,
+                "like_received",
+                -1
+              );
+            }
           }
 
           // Add to dislikes
@@ -149,10 +208,122 @@ export const like = async (req, res) => {
         }
       }
     } else {
-      return res.status(404).json({ error: "not all feilds" });
+      return res.status(404).json({ error: "not all fields" });
     }
   } catch (error) {
     console.error("Error in like controller", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// New function to handle debate outcomes
+export const recordDebateOutcome = async (req, res) => {
+  try {
+    const { winnerId, loserId, category, postId } = req.body;
+
+    if (!winnerId || !loserId || !category) {
+      return res.status(400).json({
+        error: "Missing required fields: winnerId, loserId, category",
+      });
+    }
+
+    // Award points to winner and loser
+    await RankingService.awardDebatePoints(winnerId, "win", category, loserId);
+
+    // Update post if provided
+    if (postId) {
+      await Post.findByIdAndUpdate(postId, {
+        debate_resolved: true,
+        debate_winner: winnerId,
+        resolved_at: new Date(),
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Debate outcome recorded successfully",
+    });
+  } catch (error) {
+    console.error("Error recording debate outcome:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Function to mark helpful content
+export const markHelpful = async (req, res) => {
+  try {
+    const { postId, userId } = req.body;
+
+    if (!postId || !userId) {
+      return res.status(400).json({
+        error: "Missing required fields: postId, userId",
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    // Award helpful vote points to post author
+    await RankingService.awardEngagementPoints(
+      post.author_id,
+      "helpful_vote",
+      1
+    );
+
+    // Update post with helpful vote
+    await Post.findByIdAndUpdate(postId, {
+      $inc: { helpful_votes: 1 },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Helpful vote recorded successfully",
+    });
+  } catch (error) {
+    console.error("Error marking helpful:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Function to report content
+export const reportContent = async (req, res) => {
+  try {
+    const { postId, reporterId, reason } = req.body;
+
+    if (!postId || !reporterId || !reason) {
+      return res.status(400).json({
+        error: "Missing required fields: postId, reporterId, reason",
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    // Apply penalty points to post author
+    await RankingService.awardEngagementPoints(post.author_id, "report", 1);
+
+    // Update post with report
+    await Post.findByIdAndUpdate(postId, {
+      $inc: { report_count: 1 },
+      $push: {
+        reports: {
+          reporter: reporterId,
+          reason: reason,
+          timestamp: new Date(),
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Content reported successfully",
+    });
+  } catch (error) {
+    console.error("Error reporting content:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

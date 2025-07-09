@@ -57,8 +57,7 @@ const commentSchema = new mongoose.Schema(
 );
 
 // Compound index for querying comments by post and stance
-commentSchema.index({ postid: 1, stance: 1, createdAt: -1 });
-
+commentSchema.index({ postid: 1, position: 1, createdAt: -1 });
 // Pre-save middleware to increment the post's comment count
 commentSchema.pre("save", async function (next) {
   if (this.isNew) {

@@ -6,6 +6,7 @@ import cors from "cors";
 import userRoutes from "./routes/users/user.routes.js";
 import createRoutes from "./routes/create.routes.js";
 import getRoutes from "./routes/get.routes.js";
+import rank from "./routes/rank.routes.js";
 
 import connectToMongoDB from "./db/connectToMongoDB.js";
 dotenv.config();
@@ -14,7 +15,7 @@ const PORT = process.env.PORT;
 
 app.use(
   cors({
-    origin: " http://localhost:8000",
+    origin: "http://localhost:8000",
     methods: "GET,POST,PUT,DELETE,OPTIONS",
     allowedHeaders: "Content-Type,Authorization",
     credentials: true,
@@ -27,6 +28,7 @@ app.use(cookieParser());
 app.use("/api/user", userRoutes);
 app.use("/api/create", createRoutes);
 app.use("/api/get", getRoutes);
+app.use("/api/rank", rank);
 
 app.listen(PORT, () => {
   connectToMongoDB();
