@@ -1,18 +1,17 @@
 import mongoose from "mongoose";
 
-// Comment Schema
 const commentSchema = new mongoose.Schema(
   {
     postid: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "DebatePost",
       required: true,
-      index: true, // Index for faster queries by post
+      index: true,
     },
     username: {
       type: String,
       required: true,
-      index: true, // Index for faster queries by user
+      index: true,
     },
     author_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,11 +25,10 @@ const commentSchema = new mongoose.Schema(
       trim: true,
     },
     position: {
-      // Renamed from "position" for clarity
       type: String,
       required: true,
-      enum: ["true", "false"], // More explicit than boolean
-      index: true, // For filtering by stance
+      enum: ["true", "false"],
+      index: true,
     },
     likes: [
       {
@@ -56,19 +54,57 @@ const commentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Compound index for querying comments by post and stance
+// Compound index
 commentSchema.index({ postid: 1, position: 1, createdAt: -1 });
-// Pre-save middleware to increment the post's comment count
+
+// Pre-save middleware to update counts and debate points
 commentSchema.pre("save", async function (next) {
   if (this.isNew) {
+    // Update post comment count
     await mongoose
       .model("DebatePost")
       .updateOne({ _id: this.postid }, { $inc: { comments_count: 1 } });
 
+    // Update user comment count
     await mongoose
       .model("User")
       .updateOne({ username: this.username }, { $inc: { comments_count: 1 } });
+
+    // Update debate points for the post author
+    const post = await mongoose.model("DebatePost").findById(this.postid);
+    if (post) {
+      const User = mongoose.model("User");
+      const author = await User.findById(post.author_id);
+      if (author) {
+        await author.updateDebatePoints(this.postid);
+      }
+    }
   }
+  next();
+});
+
+// Pre-remove middleware to update counts and debate points
+commentSchema.pre("remove", async function (next) {
+  // Update post comment count
+  await mongoose
+    .model("DebatePost")
+    .updateOne({ _id: this.postid }, { $inc: { comments_count: -1 } });
+
+  // Update user comment count
+  await mongoose
+    .model("User")
+    .updateOne({ username: this.username }, { $inc: { comments_count: -1 } });
+
+  // Update debate points for the post author
+  const post = await mongoose.model("DebatePost").findById(this.postid);
+  if (post) {
+    const User = mongoose.model("User");
+    const author = await User.findById(post.author_id);
+    if (author) {
+      await author.updateDebatePoints(this.postid);
+    }
+  }
+
   next();
 });
 

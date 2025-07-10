@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Core stats
     posts_count: {
       type: Number,
       default: 0,
@@ -53,18 +54,11 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    global_rank: {
-      type: Number,
-      default: null,
-    },
-
-    // Enhanced point system
-    debate_points: {
+    // Debate scoring
+    total_debate_points: {
       type: Number,
       default: 0,
     },
-
-    // Win/Loss tracking
     debates_won: {
       type: Number,
       default: 0,
@@ -73,69 +67,9 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    debates_participated: {
+    global_rank: {
       type: Number,
-      default: 0,
-    },
-
-    // Engagement points
-    likes_received: {
-      type: Number,
-      default: 0,
-    },
-    likes_given: {
-      type: Number,
-      default: 0,
-    },
-
-    // Quality metrics
-    helpful_votes: {
-      type: Number,
-      default: 0,
-    },
-    reported_count: {
-      type: Number,
-      default: 0,
-    },
-
-    // Activity streaks
-    current_streak: {
-      type: Number,
-      default: 0,
-    },
-    longest_streak: {
-      type: Number,
-      default: 0,
-    },
-    last_activity: {
-      type: Date,
-      default: Date.now,
-    },
-
-    // Achievement system
-    achievements: [
-      {
-        type: String,
-        enum: [
-          "first_win",
-          "streak_master",
-          "debate_champion",
-          "popular_voice",
-          "helpful_contributor",
-          "category_expert",
-        ],
-      },
-    ],
-
-    // Category-specific expertise
-    category_expertise: {
-      type: Map,
-      of: {
-        wins: { type: Number, default: 0 },
-        losses: { type: Number, default: 0 },
-        points: { type: Number, default: 0 },
-      },
-      default: new Map(),
+      default: null,
     },
   },
   {
@@ -145,179 +79,85 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Virtual for win rate calculation
+// Virtual for win rate
 userSchema.virtual("win_rate").get(function () {
-  if (this.debates_participated === 0) return 0;
-  return ((this.debates_won / this.debates_participated) * 100).toFixed(2);
-});
-
-// Virtual for total score calculation
-userSchema.virtual("total_score").get(function () {
-  const basePoints = this.debate_points;
-  const winBonus = this.debates_won * 10;
-  const engagementBonus = Math.floor(this.likes_received / 10);
-  const qualityBonus = this.helpful_votes * 5;
-  const streakBonus = this.current_streak * 2;
-  const penaltyPoints = this.reported_count * -5;
-
-  return (
-    basePoints +
-    winBonus +
-    engagementBonus +
-    qualityBonus +
-    streakBonus +
-    penaltyPoints
-  );
+  const total = this.debates_won + this.debates_lost;
+  if (total === 0) return 0;
+  return ((this.debates_won / total) * 100).toFixed(2);
 });
 
 // Virtual for rank tier
 userSchema.virtual("rank_tier").get(function () {
-  const score = this.total_score;
+  const score = this.total_debate_points;
   if (score >= 1000) return "Champion";
-  if (score >= 750) return "Expert";
-  if (score >= 500) return "Advanced";
-  if (score >= 250) return "Intermediate";
-  if (score >= 100) return "Beginner";
-  return "Rookie";
+  if (score >= 500) return "Expert";
+  if (score >= 250) return "Advanced";
+  if (score >= 100) return "Intermediate";
+  return "Beginner";
 });
 
-// Existing virtuals
-userSchema.virtual("followers", {
-  ref: "Follow",
-  localField: "_id",
-  foreignField: "following",
-});
+// Method to recalculate debate points for a specific post
+userSchema.methods.updateDebatePoints = async function (postId) {
+  const Post = mongoose.model("DebatePost");
+  const Comment = mongoose.model("Comment");
 
-userSchema.virtual("following", {
-  ref: "Follow",
-  localField: "_id",
-  foreignField: "follower",
-});
-
-userSchema.virtual("posts", {
-  ref: "DebatePost",
-  localField: "_id",
-  foreignField: "author_id",
-});
-
-userSchema.virtual("comments", {
-  ref: "Comment",
-  localField: "username",
-  foreignField: "username",
-});
-
-// Instance methods for point management
-userSchema.methods.addDebateWin = function (category, points = 20) {
-  this.debates_won += 1;
-  this.debates_participated += 1;
-  this.debate_points += points;
-
-  // Update category expertise
-  if (!this.category_expertise.has(category)) {
-    this.category_expertise.set(category, { wins: 0, losses: 0, points: 0 });
-  }
-  const categoryData = this.category_expertise.get(category);
-  categoryData.wins += 1;
-  categoryData.points += points;
-  this.category_expertise.set(category, categoryData);
-
-  return this.save();
-};
-
-userSchema.methods.addDebateLoss = function (category, points = -5) {
-  this.debates_lost += 1;
-  this.debates_participated += 1;
-  this.debate_points = Math.max(0, this.debate_points + points); // Prevent negative points
-
-  // Update category expertise
-  if (!this.category_expertise.has(category)) {
-    this.category_expertise.set(category, { wins: 0, losses: 0, points: 0 });
-  }
-  const categoryData = this.category_expertise.get(category);
-  categoryData.losses += 1;
-  categoryData.points += points;
-  this.category_expertise.set(category, categoryData);
-
-  return this.save();
-};
-
-userSchema.methods.updateActivity = function () {
-  const now = new Date();
-  const lastActivity = this.last_activity;
-  const timeDiff = now - lastActivity;
-  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-
-  if (daysDiff === 1) {
-    // Consecutive day activity
-    this.current_streak += 1;
-    this.longest_streak = Math.max(this.longest_streak, this.current_streak);
-  } else if (daysDiff > 1) {
-    // Streak broken
-    this.current_streak = 1;
+  // Get the post
+  const post = await Post.findById(postId);
+  if (!post || post.author_id.toString() !== this._id.toString()) {
+    return;
   }
 
-  this.last_activity = now;
-  return this.save();
-};
-
-// Static methods for ranking
-userSchema.statics.updateGlobalRanking = async function () {
-  const users = await this.find({}).sort({
-    total_score: -1,
-    win_rate: -1,
-    debates_won: -1,
-    createdAt: 1,
+  // Get comments for this post
+  const proComments = await Comment.countDocuments({
+    postid: postId,
+    position: "true",
+  });
+  const conComments = await Comment.countDocuments({
+    postid: postId,
+    position: "false",
   });
 
-  for (let i = 0; i < users.length; i++) {
-    users[i].global_rank = i + 1;
-    await users[i].save();
+  // Calculate points for this post
+  const commentPoints = (proComments - conComments) * 2;
+  const votePoints = (post.likes_count - post.dislikes_count) * 1;
+  const postPoints = commentPoints + votePoints;
+
+  // Store current post points to calculate difference
+  const currentPostPoints = post.debate_points || 0;
+  const pointsDifference = postPoints - currentPostPoints;
+
+  // Update post points
+  await Post.updateOne(
+    { _id: postId },
+    { $set: { debate_points: postPoints } }
+  );
+
+  // Update user's total points
+  this.total_debate_points += pointsDifference;
+
+  // Update win/loss status
+  if (postPoints > 0 && currentPostPoints <= 0) {
+    this.debates_won += 1;
+    if (currentPostPoints < 0) this.debates_lost -= 1;
+  } else if (postPoints < 0 && currentPostPoints >= 0) {
+    this.debates_lost += 1;
+    if (currentPostPoints > 0) this.debates_won -= 1;
   }
 
-  return users;
+  await this.save();
 };
 
-userSchema.statics.getLeaderboard = async function (
-  limit = 50,
-  category = null
-) {
-  let query = {};
-  let sortCriteria = {
-    total_score: -1,
-    win_rate: -1,
-    debates_won: -1,
-    createdAt: 1,
-  };
-
-  if (category) {
-    query[`category_expertise.${category}`] = { $exists: true };
-    sortCriteria = {
-      [`category_expertise.${category}.points`]: -1,
-      [`category_expertise.${category}.wins`]: -1,
-      total_score: -1,
-    };
-  }
-
-  return await this.find(query)
+// Static method for leaderboard
+userSchema.statics.getLeaderboard = async function (limit = 50) {
+  return await this.find({})
     .select("-password")
-    .sort(sortCriteria)
+    .sort({ total_debate_points: -1, createdAt: 1 })
     .limit(limit);
 };
 
-// Pre-save middleware to calculate derived fields
-userSchema.pre("save", function (next) {
-  // Update last activity timestamp
-  this.last_activity = new Date();
-  next();
-});
-
-// Indexes for efficient querying
-userSchema.index({ username: "text", interested_categories: "text" });
+// Indexes
+userSchema.index({ total_debate_points: -1 });
 userSchema.index({ global_rank: 1 });
-userSchema.index({ total_score: -1 });
-userSchema.index({ win_rate: -1 });
-userSchema.index({ debates_won: -1 });
-userSchema.index({ "category_expertise.points": -1 });
 
 const User = mongoose.model("User", userSchema);
 export default User;

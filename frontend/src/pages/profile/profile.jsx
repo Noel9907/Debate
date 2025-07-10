@@ -288,7 +288,7 @@ export default function Profile(z) {
                   </div>
                   <p className="text-4xl font-bold mb-2">
                     {profileStats?.winRate
-                      ? `${(profileStats.winRate * 100).toFixed(1)}%`
+                      ? `${profileStats.winRate.toFixed(1)}%`
                       : "0%"}
                   </p>
                   <p className="text-gray-400 uppercase tracking-wide text-sm">

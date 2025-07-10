@@ -55,6 +55,7 @@ export default function Home() {
                     comments={post.comments_count}
                     dislikes={post.dislikes_count}
                     categories={post.categories}
+                    imageUrl={post.imageUrl}
                   />
                 ))
               )}

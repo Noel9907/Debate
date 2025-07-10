@@ -17,6 +17,7 @@ import { useState, useRef, useEffect } from "react";
 import useLikes from "../../hooks/useLikes";
 import { useGetPost } from "../../hooks/useGetPosts";
 import { set } from "mongoose";
+
 export default function Posts({
   username,
   likes,
@@ -29,9 +30,10 @@ export default function Posts({
   comments,
   text,
   title,
+  imageUrl,
 }) {
+  console.log(imageUrl);
   const postid = id;
-
   const CurrentUser = JSON.parse(localStorage.getItem("duser"))._id;
   const { handleLike, likeLoading } = useLikes();
   const { getPost, PostLoading, post } = useGetPost();
@@ -39,12 +41,35 @@ export default function Posts({
   const [downvotes, setDownvotes] = useState(dislikes || 0);
   const [userVote, setUserVote] = useState(null);
   // Share functionality state
-
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareMenuRef = useRef(null);
+
+  // Process images - handle string, array, or null/undefined
+  const processImages = (imageData) => {
+    if (!imageData) return [];
+
+    if (typeof imageData === "string") {
+      // If it's a single string, check if it's a comma-separated list
+      const urls = imageData
+        .split(",")
+        .map((url) => url.trim())
+        .filter((url) => url);
+      return urls;
+    }
+
+    if (Array.isArray(imageData)) {
+      return imageData.filter((url) => url && url.trim());
+    }
+
+    return [];
+  };
+
+  const images = processImages(imageUrl).slice(0, 3); // Limit to 3 images max
+
   // Calculate net votes
   const netVotes = upvotes - downvotes;
+
   useEffect(() => {
     if (Array.isArray(likesUsername) && likesUsername.includes(CurrentUser)) {
       setUserVote("up");
@@ -55,6 +80,7 @@ export default function Posts({
       setUserVote("down");
     }
   }, [likesUsername, dislikesUsername, CurrentUser]);
+
   // Format large numbers to k, M format
   const formatNumber = (num) => {
     if (num >= 1000000) {
@@ -67,6 +93,28 @@ export default function Posts({
       return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     }
     return num;
+  };
+
+  // Get grid layout class based on number of images
+  const getImageGridClass = (imageCount) => {
+    switch (imageCount) {
+      case 1:
+        return "grid-cols-1";
+      case 2:
+        return "grid-cols-2";
+      case 3:
+        return "grid-cols-2"; // 2 on top, 1 on bottom
+      default:
+        return "grid-cols-1";
+    }
+  };
+
+  // Get individual image class based on count and index
+  const getImageClass = (imageCount, index) => {
+    if (imageCount === 3 && index === 2) {
+      return "col-span-2"; // Third image spans full width
+    }
+    return "";
   };
 
   const handleUpvote = async (e) => {
@@ -95,11 +143,10 @@ export default function Posts({
         setUpvotes(likes ? likes - 1 : 0);
       } else {
         setUserVote("up");
-
         setUpvotes(likesUsername.includes(CurrentUser) ? likes : likes + 1);
       }
 
-      // // After successful API call, fetch the updated post
+      // After successful API call, fetch the updated post
       getPost(postid);
     } catch (error) {
       console.error("Error handling upvote:", error);
@@ -133,7 +180,6 @@ export default function Posts({
         setDownvotes(dislikes ? dislikes - 1 : 0);
       } else {
         setUserVote("down");
-
         setDownvotes(
           dislikesUsername.includes(CurrentUser) ? dislikes : dislikes + 1
         );
@@ -236,6 +282,7 @@ export default function Posts({
             categories,
             text,
             title,
+            images: images,
           }}
           className="block"
         >
@@ -280,9 +327,38 @@ export default function Posts({
               </div>
             </div>
           </div>
+
           <p className="text-xs sm:text-sm mb-3 sm:mb-4 text-gray-300 line-clamp-2 sm:line-clamp-3">
             {text}
           </p>
+
+          {/* Image Grid */}
+          {images.length > 0 && (
+            <div
+              className={`grid gap-2 mb-3 sm:mb-4 ${getImageGridClass(
+                images.length
+              )}`}
+            >
+              {images.map((imageurl, index) => (
+                <div
+                  key={index}
+                  className={`relative overflow-hidden rounded-lg bg-gray-700 ${getImageClass(
+                    images.length,
+                    index
+                  )}`}
+                >
+                  <img
+                    src={imageurl}
+                    alt={`Post image ${index + 1}`}
+                    className="w-full h-48 sm:h-56 object-cover hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </Link>
 
         {/* Stats Bar */}

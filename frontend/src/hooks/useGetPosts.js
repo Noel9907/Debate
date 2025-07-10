@@ -37,6 +37,7 @@ const useGetAllPosts = () => {
       }
 
       setPosts(data.data);
+      console.log(data.data);
       return data.data;
     } catch (error) {
       // Only show toast for errors that aren't aborts

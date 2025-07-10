@@ -1,18 +1,28 @@
 import mongoose from "mongoose";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
-import RankingService from "../services/RankingService.js";
+import {
+  generateFileName,
+  getObjectSignedUrl,
+  uploadFile,
+} from "../services/uploadPhotos.js";
+import sharp from "sharp";
 
 export const createPost = async (req, res) => {
   try {
     const { username, text, author_id, categories, title } = req.body;
 
+    console.log(username);
     const user = await User.findOne({ username });
+    console.log(user);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    const file = req.file;
+    const fileBuffer = await sharp(file.buffer)
+      .resize({ height: 1920, width: 1080, fit: "contain" })
+      .toBuffer();
 
-    // Create and save the new post
     const post = new Post({
       username,
       text,
@@ -20,12 +30,10 @@ export const createPost = async (req, res) => {
       author_id,
       categories,
     });
-
     await post.save();
-
-    // Use the new ranking service to award points
-    await RankingService.awardEngagementPoints(user._id, "post");
-
+    const imageName = generateFileName("post", post.id, author_id);
+    console.log(imageName);
+    await uploadFile(fileBuffer, imageName, file.mimetype);
     res.status(201).json({
       id: post.id,
       username: post.username,
@@ -64,9 +72,9 @@ export const getPosts = async (req, res) => {
         $addFields: {
           engagementScore: {
             $add: [
-              { $multiply: ["$likes_count", 2] }, // Likes worth 2 points
-              { $multiply: ["$dislikes_count", 1] }, // Dislikes worth 1 point
-              { $multiply: ["$comments_count", 3] }, // Comments worth 3 points
+              { $multiply: ["$likes_count", 2] },
+              { $multiply: ["$dislikes_count", 1] },
+              { $multiply: ["$comments_count", 3] },
             ],
           },
         },
@@ -82,7 +90,16 @@ export const getPosts = async (req, res) => {
       },
     ]);
 
-    res.status(200).json({ data: posts });
+    const postsWithUrls = await Promise.all(
+      posts.map(async (post) => ({
+        ...post,
+        imageUrl: await getObjectSignedUrl(
+          `post-${post._id}-${post.author_id}`
+        ),
+      }))
+    );
+
+    res.status(200).json({ data: postsWithUrls });
   } catch (error) {
     console.log("error in getPosts controller", error);
     res.status(500).json({ error: "internal server error" });
@@ -129,13 +146,6 @@ export const like = async (req, res) => {
 
           // Remove like points from post author
           const postAuthor = await User.findById(post.author_id);
-          if (postAuthor) {
-            await RankingService.awardEngagementPoints(
-              postAuthor._id,
-              "like_received",
-              -1
-            );
-          }
 
           return res.status(200).json({ message: "Post unliked successfully" });
         } else {
@@ -155,13 +165,6 @@ export const like = async (req, res) => {
 
           // Award points to post author for receiving a like
           const postAuthor = await User.findById(post.author_id);
-          if (postAuthor) {
-            await RankingService.awardEngagementPoints(
-              postAuthor._id,
-              "like_received",
-              1
-            );
-          }
 
           return res.status(200).json({ message: "Post liked successfully" });
         }
@@ -188,13 +191,6 @@ export const like = async (req, res) => {
 
             // Remove like points from post author
             const postAuthor = await User.findById(post.author_id);
-            if (postAuthor) {
-              await RankingService.awardEngagementPoints(
-                postAuthor._id,
-                "like_received",
-                -1
-              );
-            }
           }
 
           // Add to dislikes
@@ -226,9 +222,6 @@ export const recordDebateOutcome = async (req, res) => {
         error: "Missing required fields: winnerId, loserId, category",
       });
     }
-
-    // Award points to winner and loser
-    await RankingService.awardDebatePoints(winnerId, "win", category, loserId);
 
     // Update post if provided
     if (postId) {
@@ -265,13 +258,6 @@ export const markHelpful = async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    // Award helpful vote points to post author
-    await RankingService.awardEngagementPoints(
-      post.author_id,
-      "helpful_vote",
-      1
-    );
-
     // Update post with helpful vote
     await Post.findByIdAndUpdate(postId, {
       $inc: { helpful_votes: 1 },
@@ -302,9 +288,6 @@ export const reportContent = async (req, res) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
-
-    // Apply penalty points to post author
-    await RankingService.awardEngagementPoints(post.author_id, "report", 1);
 
     // Update post with report
     await Post.findByIdAndUpdate(postId, {

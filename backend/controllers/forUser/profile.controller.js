@@ -51,13 +51,26 @@ export const getUserDebateStats = async (req, res) => {
       },
     ]);
 
-    // Get win rate from user's own posts (debates they created)
     const postWinRateStats = await Post.aggregate([
       { $match: { author_id: userObjectId } },
+      {
+        $project: {
+          likes_count: 1,
+          dislikes_count: 1,
+          isWin: {
+            $cond: {
+              if: { $gt: ["$likes_count", "$dislikes_count"] },
+              then: 1,
+              else: 0,
+            },
+          },
+        },
+      },
       {
         $group: {
           _id: null,
           totalPosts: { $sum: 1 },
+          wins: { $sum: "$isWin" },
           totalLikes: { $sum: "$likes_count" },
           totalDislikes: { $sum: "$dislikes_count" },
         },
@@ -67,21 +80,11 @@ export const getUserDebateStats = async (req, res) => {
           totalVotes: { $add: ["$totalLikes", "$totalDislikes"] },
           winRate: {
             $cond: {
-              if: { $eq: [{ $add: ["$totalLikes", "$totalDislikes"] }, 0] },
+              if: { $eq: ["$totalPosts", 0] },
               then: 0,
               else: {
                 $round: [
-                  {
-                    $multiply: [
-                      {
-                        $divide: [
-                          { $subtract: ["$totalLikes", "$totalDislikes"] },
-                          { $add: ["$totalLikes", "$totalDislikes"] },
-                        ],
-                      },
-                      100,
-                    ],
-                  },
+                  { $multiply: [{ $divide: ["$wins", "$totalPosts"] }, 100] },
                   2,
                 ],
               },
