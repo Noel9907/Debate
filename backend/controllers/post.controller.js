@@ -11,17 +11,12 @@ import sharp from "sharp";
 export const createPost = async (req, res) => {
   try {
     const { username, text, author_id, categories, title } = req.body;
-
-    console.log(username);
+    const file = req.file;
+    const image = false;
     const user = await User.findOne({ username });
-    console.log(user);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    const file = req.file;
-    const fileBuffer = await sharp(file.buffer)
-      .resize({ height: 1920, width: 1080, fit: "contain" })
-      .toBuffer();
 
     const post = new Post({
       username,
@@ -29,11 +24,18 @@ export const createPost = async (req, res) => {
       title,
       author_id,
       categories,
+      image: file ? true : false,
     });
     await post.save();
-    const imageName = generateFileName("post", post.id, author_id);
-    console.log(imageName);
-    await uploadFile(fileBuffer, imageName, file.mimetype);
+
+    if (file) {
+      const fileBuffer = await sharp(file.buffer)
+        .resize({ height: 1920, width: 1080, fit: "contain" })
+        .toBuffer();
+      const imageName = generateFileName("post", post.id, author_id);
+      console.log(imageName);
+      await uploadFile(fileBuffer, imageName, file.mimetype);
+    }
     res.status(201).json({
       id: post.id,
       username: post.username,
@@ -91,12 +93,17 @@ export const getPosts = async (req, res) => {
     ]);
 
     const postsWithUrls = await Promise.all(
-      posts.map(async (post) => ({
-        ...post,
-        imageUrl: await getObjectSignedUrl(
-          `post-${post._id}-${post.author_id}`
-        ),
-      }))
+      posts.map(async (post) => {
+        const base = { ...post };
+
+        if (post.image) {
+          base.imageUrl = await getObjectSignedUrl(
+            `post-${post._id}-${post.author_id}`
+          );
+        }
+
+        return base;
+      })
     );
 
     res.status(200).json({ data: postsWithUrls });

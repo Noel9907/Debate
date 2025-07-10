@@ -7,6 +7,7 @@ const postSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    image: { type: Boolean, required: true },
     author_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
