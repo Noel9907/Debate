@@ -53,7 +53,6 @@ const useGetAllPosts = () => {
   return { getPosts, posts, loading };
 };
 
-// Post detail hook with improved error handling and caching
 export const useGetPost = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [post, setPost] = useState({});

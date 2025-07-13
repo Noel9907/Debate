@@ -57,9 +57,17 @@ export const post = async (req, res) => {
       throw new Error("no Post id");
     }
 
-    const post = await Post.find({ _id: postid }).then((data) => {
-      res.status(201).json(data);
-    });
+    const post = await Post.findById(postid).lean();
+    if (!post) {
+      throw new Error("no posts");
+    }
+    if (post.image) {
+      post.imageUrl = await getObjectSignedUrl(
+        `post-${post._id}-${post.author_id}`
+      );
+    }
+    console.log(post);
+    res.status(200).json([post]);
   } catch (error) {
     res.status(400).json("error in getting post controller");
   }
