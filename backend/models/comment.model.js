@@ -73,11 +73,10 @@ commentSchema.pre("save", async function (next) {
     // Update debate points for the post author
     const post = await mongoose.model("DebatePost").findById(this.postid);
     if (post) {
-      const User = mongoose.model("User");
-      const author = await User.findById(post.author_id);
-      if (author) {
-        await author.updateDebatePoints(this.postid);
-      }
+      const pointChange = this.position === "true" ? 0.3 : -0.3;
+      await mongoose.model("User").findByIdAndUpdate(post.author_id, {
+        $inc: { total_debate_points: pointChange },
+      });
     }
   }
   next();
@@ -95,14 +94,13 @@ commentSchema.pre("remove", async function (next) {
     .model("User")
     .updateOne({ username: this.username }, { $inc: { comments_count: -1 } });
 
-  // Update debate points for the post author
+  // Update debate points for the post author (reverse the points)
   const post = await mongoose.model("DebatePost").findById(this.postid);
   if (post) {
-    const User = mongoose.model("User");
-    const author = await User.findById(post.author_id);
-    if (author) {
-      await author.updateDebatePoints(this.postid);
-    }
+    const pointChange = this.position === "true" ? -0.3 : 0.3;
+    await mongoose.model("User").findByIdAndUpdate(post.author_id, {
+      $inc: { total_debate_points: pointChange },
+    });
   }
 
   next();

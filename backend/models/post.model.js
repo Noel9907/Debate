@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import User from "./user.model.js";
 
 const postSchema = new mongoose.Schema(
   {
@@ -53,11 +54,6 @@ const postSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Store calculated debate points for this post
-    debate_points: {
-      type: Number,
-      default: 0,
-    },
   },
   {
     timestamps: true,
@@ -75,74 +71,100 @@ postSchema.virtual("comments", {
 
 // Compound index
 postSchema.index({ categories: 1, createdAt: -1 });
-
-// Method to toggle like and update points
 postSchema.methods.toggleLike = async function (userId) {
   const userIdObj = new mongoose.Types.ObjectId(userId);
+
+  // Refetch updated likes/dislikes
+  const post = await this.constructor
+    .findById(this._id)
+    .select("likes dislikes");
+
   let isLiked = false;
 
-  if (this.likes.includes(userIdObj)) {
+  const alreadyLiked = post.likes.some((id) => id.equals(userIdObj));
+  const alreadyDisliked = post.dislikes.some((id) => id.equals(userIdObj));
+
+  if (alreadyLiked) {
+    // Remove like
     await this.updateOne({
       $pull: { likes: userIdObj },
       $inc: { likes_count: -1 },
     });
-    isLiked = false;
+
+    await User.findByIdAndUpdate(this.author_id, {
+      $inc: { total_debate_points: -0.1 },
+    });
   } else {
-    // Remove from dislikes if present
-    if (this.dislikes.includes(userIdObj)) {
+    // Remove dislike if present
+    let pointsToAdd = 0.1;
+    if (alreadyDisliked) {
       await this.updateOne({
         $pull: { dislikes: userIdObj },
         $inc: { dislikes_count: -1 },
       });
+      pointsToAdd = 0.2;
     }
+
     await this.updateOne({
       $addToSet: { likes: userIdObj },
       $inc: { likes_count: 1 },
     });
-    isLiked = true;
-  }
 
-  // Update debate points for the post author
-  const User = mongoose.model("User");
-  const author = await User.findById(this.author_id);
-  if (author) {
-    await author.updateDebatePoints(this._id);
+    await User.findByIdAndUpdate(this.author_id, {
+      $inc: { total_debate_points: pointsToAdd },
+    });
+
+    isLiked = true;
   }
 
   return isLiked;
 };
 
-// Method to toggle dislike and update points
 postSchema.methods.toggleDislike = async function (userId) {
   const userIdObj = new mongoose.Types.ObjectId(userId);
+  const User = mongoose.model("User");
+
+  // Refetch updated likes/dislikes
+  const post = await this.constructor
+    .findById(this._id)
+    .select("likes dislikes");
+
   let isDisliked = false;
 
-  if (this.dislikes.includes(userIdObj)) {
+  const alreadyDisliked = post.dislikes.some((id) => id.equals(userIdObj));
+  const alreadyLiked = post.likes.some((id) => id.equals(userIdObj));
+
+  if (alreadyDisliked) {
+    // Remove dislike
     await this.updateOne({
       $pull: { dislikes: userIdObj },
       $inc: { dislikes_count: -1 },
     });
-    isDisliked = false;
+
+    await User.findByIdAndUpdate(this.author_id, {
+      $inc: { total_debate_points: 0.1 },
+    });
   } else {
-    // Remove from likes if present
-    if (this.likes.includes(userIdObj)) {
+    // Remove like if present
+    let pointsToRemove = -0.1;
+    if (alreadyLiked) {
       await this.updateOne({
         $pull: { likes: userIdObj },
         $inc: { likes_count: -1 },
       });
+      pointsToRemove = -0.2;
     }
+
     await this.updateOne({
       $addToSet: { dislikes: userIdObj },
       $inc: { dislikes_count: 1 },
     });
-    isDisliked = true;
-  }
 
-  // Update debate points for the post author
-  const User = mongoose.model("User");
-  const author = await User.findById(this.author_id);
-  if (author) {
-    await author.updateDebatePoints(this._id);
+    await User.findByIdAndUpdate(this.author_id, {
+      $inc: { total_debate_points: pointsToRemove },
+    });
+
+    isDisliked = true;
   }
 
   return isDisliked;
