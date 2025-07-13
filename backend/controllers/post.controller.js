@@ -121,6 +121,91 @@ export const getPosts = async (req, res) => {
   }
 };
 
+export const getTrendingPosts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const category = req.query.category;
+    const timeFilter = req.query.timeFilter || "7d"; // 7d, 30d, all
+
+    // Calculate date threshold based on time filter
+    let dateThreshold = null;
+    if (timeFilter !== "all") {
+      const days = timeFilter === "7d" ? 7 : 30;
+      dateThreshold = new Date();
+      dateThreshold.setDate(dateThreshold.getDate() - days);
+    }
+
+    // Build match conditions
+    const matchConditions = {};
+    if (dateThreshold) {
+      matchConditions.createdAt = { $gte: dateThreshold };
+    }
+    if (category) {
+      matchConditions.categories = { $in: [category] };
+    }
+
+    // Aggregation pipeline for trending posts
+    const posts = await Post.aggregate([
+      {
+        $match: matchConditions,
+      },
+      {
+        $addFields: {
+          engagementScore: {
+            $add: [
+              { $multiply: ["$likes_count", 2] },
+              { $multiply: ["$dislikes_count", 1] },
+              { $multiply: ["$comments_count", 3] },
+              // Time decay factor - newer posts get slight boost
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      { $subtract: [new Date(), "$createdAt"] },
+                      1000 * 60 * 60 * 24, // Convert to days
+                    ],
+                  },
+                  -0.1, // Slight negative weight for age (newer = higher score)
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $sort: {
+          engagementScore: -1,
+          createdAt: -1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
+    ]);
+
+    const postsWithUrls = await Promise.all(
+      posts.map(async (post) => {
+        const base = { ...post };
+        if (post.image) {
+          base.imageUrl = await getObjectSignedUrl(
+            `post-${post._id}-${post.author_id}`
+          );
+        }
+        return base;
+      })
+    );
+
+    res.status(200).json({ data: postsWithUrls });
+  } catch (error) {
+    console.log("error in getTrendingPosts controller", error);
+    res.status(500).json({ error: "internal server error" });
+  }
+};
 export const like = async (req, res) => {
   try {
     const { postid, user, stance } = req.body;
@@ -128,17 +213,15 @@ export const like = async (req, res) => {
     console.log(postid + user + stance);
     const isThere = allThere(postid, user, stance);
     if (isThere) {
-      // Find the post first to make sure it exists
       const post = await Post.findById(postid);
 
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
       }
-      const userId = user; // Assuming user is the user ID
+      const userId = user;
 
       const userObjectId = new mongoose.Types.ObjectId(userId);
 
-      // Check if stance is valid
       if (stance !== "like" && stance !== "dislike") {
         return res
           .status(400)

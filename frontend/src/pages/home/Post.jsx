@@ -32,7 +32,6 @@ export default function Posts({
   title,
   imageUrl,
 }) {
-  console.log(imageUrl);
   const postid = id;
   const CurrentUser = JSON.parse(localStorage.getItem("duser"))._id;
   const { handleLike, likeLoading } = useLikes();
