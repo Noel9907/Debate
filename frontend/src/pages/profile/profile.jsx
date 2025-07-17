@@ -22,16 +22,7 @@ import { usePostStats, useProfileStats } from "../../hooks/useProfile.js";
 import useFollow from "../../hooks/useFollow.js"; // Import your useFollow hook
 import Topbar from "../../../components/Topbar.jsx";
 
-const userInfo = {
-  name: "Jane Doe",
-  username: "@janedoe",
-  bio: "Passionate debater | Tech enthusiast | Always learning",
-
-  joinDate: "January 2023",
-  avatar: "/placeholder.svg?height=200&width=200",
-};
-
-export default function Profile(z) {
+export default function Profile() {
   const { getProfileStats, profileStats, loading } = useProfileStats();
   const {
     getPostStats,
@@ -76,7 +67,6 @@ export default function Profile(z) {
 
   useEffect(() => {
     const checkStatus = async () => {
-      console.log("first");
       if (profileUserId && !isOwnProfile) {
         try {
           const status = await checkFollowStatus(profileUserId);
@@ -118,7 +108,6 @@ export default function Profile(z) {
       // Optionally show an error toast here if not handled in the hook
     }
   };
-
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br  from-gray-900 to-black text-white">
@@ -162,8 +151,8 @@ export default function Profile(z) {
                 <div className="flex-shrink-0 self-center lg:self-start">
                   <div className="relative">
                     <img
-                      src={profileStats?.profilepic || userInfo.avatar}
-                      alt={profileStats?.username || userInfo.name}
+                      src={profileStats?.profilepic}
+                      alt={profileStats?.username}
                       className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-600 shadow-2xl"
                     />
                     {userRank && (
@@ -178,13 +167,13 @@ export default function Profile(z) {
                 <div className="flex-1 text-center lg:text-left">
                   <div className="mb-6">
                     <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                      {profileStats?.username || userInfo.name}
+                      {profileStats?.username}
                     </h1>
                     <p className="text-xl text-gray-400 mb-4">
-                      @{profileStats?.username || userInfo.username}
+                      @{profileStats?.username}
                     </p>
                     <p className="text-lg text-gray-300 max-w-2xl leading-relaxed">
-                      {userInfo.bio}
+                      {profileStats?.bio}
                     </p>
                   </div>
 

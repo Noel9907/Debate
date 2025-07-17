@@ -7,11 +7,13 @@ import {
   getFollowStatus,
   unfollowUser,
 } from "../../controllers/follow.controller.js";
+import { editProfile } from "../../controllers/forUser/profile.controller.js";
 
 const router = express.Router();
 
 router.use("/auth", authRoutes);
 router.get("/search", searchUsers);
+router.patch("/edit", editProfile);
 router.post("/track/:userToTrackId", protectRoute, followUser);
 router.delete("/untrack/:userId", protectRoute, unfollowUser);
 router.get("/status/:userId", protectRoute, getFollowStatus);

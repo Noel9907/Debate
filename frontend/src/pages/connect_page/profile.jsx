@@ -18,7 +18,6 @@ const ProfileCard = ({ user }) => {
               e.target.src = `https://avatar.iran.liara.run/public/boy?username=${user.username}`;
             }}
           />
-          {/* <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gray-800"></div> */}
         </div>
 
         {/* User Info */}

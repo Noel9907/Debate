@@ -48,13 +48,13 @@ const Footernav = ({ color }) => {
               <Plus />
               <span className="text-xs mt-1">Post</span>
             </Link>
-            <Link
+            {/* <Link
               to="/topics"
               className="flex flex-col items-center text-gray-400 hover:text-white"
             >
               <Cloud className="w-6 h-6" />
               <span className="text-xs mt-1">Live Debates</span>
-            </Link>
+            </Link> */}
             <Link
               to="/profile"
               className={`flex flex-col items-center ${

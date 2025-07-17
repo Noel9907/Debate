@@ -2,6 +2,105 @@ import Post from "../../models/post.model.js";
 import Comment from "../../models/comment.model.js";
 import User from "../../models/user.model.js";
 
+export const editProfile = async (req, res) => {
+  try {
+    const { gender, bio, location, interestedCategories } = req.body;
+    const userId = req.user._id;
+
+    if (bio !== undefined) {
+      if (typeof bio !== "string") {
+        return res.status(400).json({ error: "bio must be a string" });
+      }
+      if (bio.length > 500) {
+        return res
+          .status(400)
+          .json({ error: "bio cannot exceed 500 characters" });
+      }
+    }
+
+    if (location !== undefined) {
+      if (typeof location !== "string") {
+        return res.status(400).json({ error: "location must be a string" });
+      }
+      if (location.length > 100) {
+        return res
+          .status(400)
+          .json({ error: "location cannot exceed 100 characters" });
+      }
+    }
+
+    if (interestedCategories !== undefined) {
+      if (!Array.isArray(interestedCategories)) {
+        return res
+          .status(400)
+          .json({ error: "interested categories must be an array" });
+      }
+      if (interestedCategories.length > 10) {
+        return res
+          .status(400)
+          .json({ error: "cannot select more than 10 interested categories" });
+      }
+
+      for (let i = 0; i < interestedCategories.length; i++) {
+        if (typeof interestedCategories[i] !== "string") {
+          return res
+            .status(400)
+            .json({ error: "all interested categories must be strings" });
+        }
+      }
+    }
+
+    if (gender !== undefined) {
+      if (typeof gender !== "string") {
+        return res.status(400).json({ error: "gender must be a string" });
+      }
+      if (!["male", "female", "other"].includes(gender)) {
+        return res.status(400).json({ error: "invalid gender selection" });
+      }
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "user not found" });
+    }
+
+    let profilePic = user.profilepic;
+    if (gender && gender !== user.gender) {
+      const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${user.username}`;
+      const girlProfilePic = `https://avatar.iran.liara.run/public/girl?username=${user.username}`;
+      profilePic = gender === "male" ? boyProfilePic : girlProfilePic;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...(gender && { gender }),
+        ...(bio !== undefined && { bio }),
+        ...(location !== undefined && { location }),
+        ...(interestedCategories && { interestedCategories }),
+        ...(profilePic !== user.profilepic && { profilepic: profilePic }),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (updatedUser) {
+      res.status(200).json({
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        gender: updatedUser.gender,
+        bio: updatedUser.bio,
+        location: updatedUser.location,
+        interestedCategories: updatedUser.interestedCategories,
+        profilepic: updatedUser.profilepic,
+      });
+    } else {
+      res.status(400).json({ error: "failed to update profile" });
+    }
+  } catch (error) {
+    console.log("error in edit profile controller", error);
+    res.status(500).json({ error: "internal server error" });
+  }
+};
 export const getUserDebateStats = async (req, res) => {
   try {
     const { username } = req.params;
@@ -110,6 +209,7 @@ export const getUserDebateStats = async (req, res) => {
       data: {
         _id: user._id,
         username: user.username,
+        bio: user.bio,
         trackers: user.followers_count,
         tracking: user.following_count,
         debatesJoined, // Unique debates commented on
