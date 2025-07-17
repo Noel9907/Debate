@@ -1,6 +1,5 @@
 import { toast } from "react-toastify";
 import { useState, useCallback, useRef } from "react";
-
 export const useProfileStats = () => {
   const [loading, setLoading] = useState(false);
   const [profileStats, setProfileStats] = useState(null);
@@ -151,4 +150,56 @@ export const usePostStats = () => {
     hasMore,
     loading,
   };
+};
+
+export const useEditProfile = () => {
+  const [loading, setLoading] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const abortControllerRef = useRef(null);
+
+  const editProfile = useCallback(async (profileUpdates) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/user/edit`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(profileUpdates),
+        signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log(data);
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setProfileData(data);
+      toast.success("Profile updated successfully");
+      return data;
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        toast.error(error.message || "Failed to update profile");
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { editProfile, profileData, loading };
 };

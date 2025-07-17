@@ -4,9 +4,6 @@ import {
   MessageSquare,
   TrendingUp,
   Users,
-  Mail,
-  MapPin,
-  Calendar,
   Edit,
   Loader2,
   FileText,
@@ -15,12 +12,12 @@ import {
   UserPlus,
   UserCheck,
   Trophy,
-  ArrowLeft,
 } from "lucide-react";
 import Footernav from "../../../components/Footernav";
 import { usePostStats, useProfileStats } from "../../hooks/useProfile.js";
-import useFollow from "../../hooks/useFollow.js"; // Import your useFollow hook
+import useFollow from "../../hooks/useFollow.js";
 import Topbar from "../../../components/Topbar.jsx";
+import EditProfileModal from "./EditProfileModal.jsx";
 
 export default function Profile() {
   const { getProfileStats, profileStats, loading } = useProfileStats();
@@ -33,7 +30,6 @@ export default function Profile() {
     loading: postsLoading,
   } = usePostStats();
 
-  // Use your follow hook
   const {
     loading: followLoading,
     followUser,
@@ -46,6 +42,7 @@ export default function Profile() {
   const [trackingCount, setTrackingCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [userRank, setUserRank] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const username = useParams();
   const user =
@@ -53,7 +50,9 @@ export default function Profile() {
   const currentUser = JSON.parse(localStorage.getItem("duser"));
   const isOwnProfile = user === currentUser?.username;
   const profileUserId = profileStats?._id || profileStats?.userId;
+
   console.log(profileUserId);
+
   useEffect(() => {
     if (user) {
       getProfileStats(user);
@@ -76,7 +75,6 @@ export default function Profile() {
         }
       }
     };
-
     if (profileUserId) {
       checkStatus();
     }
@@ -92,7 +90,6 @@ export default function Profile() {
 
   const handleTrackToggle = async () => {
     if (!profileUserId || followLoading) return;
-
     try {
       if (isTracking) {
         await unfollowUser(profileUserId);
@@ -108,9 +105,35 @@ export default function Profile() {
       // Optionally show an error toast here if not handled in the hook
     }
   };
+
+  const handleEditProfile = async (updatedData) => {
+    console.log("Updating profile with:", updatedData);
+
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Here you would make your actual API call
+    // await updateProfile(profileUserId, updatedData)
+
+    // Refresh profile data after update
+    getProfileStats(user);
+  };
+
+  // Close modal on ESC key
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === "Escape" && isEditModalOpen) {
+        setIsEditModalOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscKey);
+    return () => document.removeEventListener("keydown", handleEscKey);
+  }, [isEditModalOpen]);
+
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br  from-gray-900 to-black text-white">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
         <style>{`
           /* Custom scrollbar styles */
           ::-webkit-scrollbar {
@@ -126,12 +149,12 @@ export default function Profile() {
           ::-webkit-scrollbar-thumb:hover {
             background: #718096;
           }
-          
+                    
           /* Smooth animations */
           * {
             transition: all 0.2s ease;
           }
-          
+                    
           .hover-lift:hover {
             transform: translateY(-2px);
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
@@ -151,7 +174,7 @@ export default function Profile() {
                 <div className="flex-shrink-0 self-center lg:self-start">
                   <div className="relative">
                     <img
-                      src={profileStats?.profilepic}
+                      src={profileStats?.profilepic || "/placeholder.svg"}
                       alt={profileStats?.username}
                       className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-600 shadow-2xl"
                     />
@@ -211,13 +234,13 @@ export default function Profile() {
                 {/* Action Button */}
                 <div className="flex-shrink-0 self-center lg:self-start">
                   {isOwnProfile ? (
-                    <Link
-                      to="/profile/edit"
+                    <button
+                      onClick={() => setIsEditModalOpen(true)}
                       className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center shadow-lg hover:shadow-red-500/25"
                     >
                       <Edit className="w-5 h-5 mr-2" />
                       Edit Profile
-                    </Link>
+                    </button>
                   ) : (
                     <button
                       onClick={handleTrackToggle}
@@ -378,7 +401,6 @@ export default function Profile() {
                 </div>
               )}
             </div>
-
             {postsLoading && posts.length === 0 ? (
               <div className="flex justify-center items-center py-16">
                 <Loader2 className="w-8 h-8 animate-spin text-red-400 mr-3" />
@@ -400,13 +422,11 @@ export default function Profile() {
                           {post.category || "General"}
                         </span>
                       </div>
-
                       {post.content && (
                         <p className="text-gray-300 mb-6 line-clamp-3 leading-relaxed">
                           {post.content}
                         </p>
                       )}
-
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-1">
@@ -438,7 +458,6 @@ export default function Profile() {
                           </span>
                         </div>
                       </div>
-
                       <div className="flex items-center justify-between">
                         <div className="text-xs text-gray-500">
                           {post.createdAt
@@ -455,7 +474,6 @@ export default function Profile() {
                     </article>
                   ))}
                 </div>
-
                 {hasMore && (
                   <div className="text-center mt-12">
                     <button
@@ -551,6 +569,19 @@ export default function Profile() {
             </section>
           )}
         </main>
+
+        {/* Edit Profile Modal */}
+        <EditProfileModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          profileData={{
+            gender: profileStats?.gender,
+            bio: profileStats?.bio,
+            location: profileStats?.location,
+            interestedCategories: profileStats?.interestedCategories || [],
+          }}
+          onSave={handleEditProfile}
+        />
       </div>
       <Footernav color={"profile"} />
     </>
