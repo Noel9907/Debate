@@ -3,30 +3,28 @@ import { useState } from "react";
 
 const useCreatePost = () => {
   const [loading, setLoading] = useState(false);
-  const createPost = async ({
-    username,
-    text,
-    author_id,
-    categories,
-    title,
-  }) => {
-    const isValid = handleInputErrors(username, text, categories, title);
 
+  const createPost = async (formDataObj) => {
+    const { username, text, categories, title } = formDataObj;
+
+    const isValid = handleInputErrors(username, text, categories, title);
     if (!isValid) return;
+
     setLoading(true);
     try {
+      const formData = new FormData();
+      for (const key in formDataObj) {
+        if (formDataObj[key] !== null) {
+          formData.append(key, formDataObj[key]);
+        }
+      }
+
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/create/post`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username,
-            text,
-            author_id,
-            categories,
-            title,
-          }),
+          credentials: "include",
+          body: formData, // no JSON.stringify
         }
       );
 
@@ -36,7 +34,7 @@ const useCreatePost = () => {
       }
 
       toast.success("Post created successfully!");
-      return await res.json(); // Optionally return response data
+      return await res.json();
     } catch (error) {
       toast.error(error.message || "Something went wrong");
     } finally {

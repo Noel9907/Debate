@@ -31,6 +31,7 @@ export default function Posts({
   text,
   title,
   imageUrl,
+  videoUrl,
 }) {
   const postid = id;
   const CurrentUser = JSON.parse(localStorage.getItem("duser"))._id;
@@ -356,6 +357,18 @@ export default function Posts({
                   />
                 </div>
               ))}
+            </div>
+          )}
+          {videoUrl && (
+            <div className="mb-4 rounded-lg overflow-hidden bg-black">
+              <video
+                controls
+                className="w-full h-64 object-cover"
+                src={videoUrl}
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
             </div>
           )}
         </Link>

@@ -7,12 +7,13 @@ import {
   uploadFile,
 } from "../services/uploadPhotos.js";
 import sharp from "sharp";
-
 export const createPost = async (req, res) => {
   try {
     const { username, text, author_id, categories, title } = req.body;
-    const file = req.file;
-    const image = false;
+
+    const imageFile = req.files?.image?.[0] || null;
+    const videoFile = req.files?.video?.[0] || null;
+
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -24,18 +25,28 @@ export const createPost = async (req, res) => {
       title,
       author_id,
       categories,
-      image: file ? true : false,
+      image: imageFile ? true : false,
+      video: videoFile ? true : false,
     });
+
     await post.save();
 
-    if (file) {
-      const fileBuffer = await sharp(file.buffer)
+    // Handle image upload
+    if (imageFile) {
+      const imageBuffer = await sharp(imageFile.buffer)
         .resize({ height: 1920, width: 1080, fit: "contain" })
         .toBuffer();
-      const imageName = generateFileName("post", post.id, author_id);
-      console.log(imageName);
-      await uploadFile(fileBuffer, imageName, file.mimetype);
+
+      const imageName = generateFileName("post-image", post.id, author_id);
+      await uploadFile(imageBuffer, imageName, imageFile.mimetype);
     }
+
+    // Handle video upload
+    if (videoFile) {
+      const videoName = generateFileName("post-video", post.id, author_id);
+      await uploadFile(videoFile.buffer, videoName, videoFile.mimetype);
+    }
+
     res.status(201).json({
       id: post.id,
       username: post.username,
@@ -43,9 +54,11 @@ export const createPost = async (req, res) => {
       text: post.text,
       author_id: post.author_id,
       categories: post.categories,
+      hasImage: !!imageFile,
+      hasVideo: !!videoFile,
     });
   } catch (error) {
-    console.log("error in createPost controller", error);
+    console.error("error in createPost controller", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -102,15 +115,28 @@ export const getPosts = async (req, res) => {
 
     const postsWithUrls = await Promise.all(
       posts.map(async (post) => {
-        const base = { ...post };
+        const postId = post._id?.toString();
+        const authorId = post.author_id?.toString();
+
+        let imageUrl = null;
+        let videoUrl = null;
 
         if (post.image) {
-          base.imageUrl = await getObjectSignedUrl(
-            `post-${post._id}-${post.author_id}`
+          imageUrl = await getObjectSignedUrl(
+            `post-image-${postId}-${authorId}`
+          );
+        }
+        if (post.video) {
+          videoUrl = await getObjectSignedUrl(
+            `post-video-${postId}-${authorId}`
           );
         }
 
-        return base;
+        return {
+          ...post,
+          imageUrl,
+          videoUrl,
+        };
       })
     );
 

@@ -25,11 +25,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
-
 app.use("/api/user", userRoutes);
-app.use("/api/create", upload.single("image"), createRoutes);
+app.use("/api/create", createRoutes);
 app.use("/api/get", getRoutes);
 
 app.listen(PORT, () => {

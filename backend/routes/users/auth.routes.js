@@ -4,9 +4,6 @@ import {
   logout,
   signup,
 } from "../../controllers/user/auth/auth.controller.js";
-// import User from "../models/user.model.js";
-// import bcrypt from "bcryptjs";
-// import generateTockenAndSetCookie from "../utils/generateTocken.js";
 const router = express.Router();
 
 router.post("/signup", signup);

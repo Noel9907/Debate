@@ -106,15 +106,15 @@ export const useGetTrending = () => {
 export const useGetPost = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [post, setPost] = useState({});
-  const [error, setError] = useState(null); // Simple in-memory cache
+  const [error, setError] = useState(null);
 
   const getPost = async (postId) => {
     if (!postId) return null;
 
-    try {
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
+    try {
       const res = await fetch(
         `${
           import.meta.env.VITE_API_URL
@@ -125,25 +125,19 @@ export const useGetPost = () => {
         }
       );
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! Status: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
 
       const data = await res.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      if (data.error) throw new Error(data.error);
 
       const postData = data[0] || {};
-
+      console.log(postData);
       setPost(postData);
       return postData;
     } catch (error) {
-      // Only show toast for errors that aren't aborts
       if (error.name !== "AbortError") {
-        setError(error.message || "Error getting post");
         toast.error(error.message || "Error getting post");
+        setError(error.message || "Error getting post");
       }
       return null;
     } finally {
@@ -153,5 +147,4 @@ export const useGetPost = () => {
 
   return { post, getPost, isLoading, error };
 };
-
 export default useGetAllPosts;

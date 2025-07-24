@@ -2,6 +2,8 @@ import User from "../../../models/user.model.js";
 
 export const searchUsers = async (req, res) => {
   const { q, gender } = req.query;
+  console.log("first");
+  console.log(q);
   if (!q) {
     return res.json();
   }

@@ -15,7 +15,10 @@ export default function CreatePost() {
     categories: "",
     title: "",
     isPublic: true,
+    image: null,
+    video: null,
   });
+
   const { createPost, Loading } = useCreatePost();
   const [charCount, setCharCount] = useState(0);
 
@@ -127,6 +130,48 @@ export default function CreatePost() {
                   <option value="other">Other</option>
                 </select>
               </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300">
+                  Upload Image (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      image: e.target.files[0],
+                    }))
+                  }
+                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
+      file:rounded-md file:border-0
+      file:text-sm file:font-semibold
+      file:bg-red-500 file:text-white
+      hover:file:bg-red-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300">
+                  Upload Video (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      video: e.target.files[0],
+                    }))
+                  }
+                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
+      file:rounded-md file:border-0
+      file:text-sm file:font-semibold
+      file:bg-red-500 file:text-white
+      hover:file:bg-red-600"
+                />
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   type="button"
@@ -178,105 +223,3 @@ export default function CreatePost() {
     </>
   );
 }
-
-// import { useState } from "react";
-// import { Link, useNavigate } from "react-router-dom";
-// import useCreatePost from "../../hooks/useCreatePost.js";
-
-// export default function CreatePost() {
-//   const name = JSON.parse(localStorage.getItem("duser")).username;
-//   const id = JSON.parse(localStorage.getItem("duser"))._id;
-
-//   const navigate = useNavigate();
-//   const [formData, setFormData] = useState({
-//     username: name,
-//     text: "",
-//     author_id: id,
-//     categories: "",
-//     title: "",
-//     isPublic: true,
-//   });
-//   const { createPost, Loading } = useCreatePost();
-//   const handleInputChange = (e) => {
-//     const { name, value } = e.target;
-//     setFormData((prev) => ({ ...prev, [name]: value }));
-//   };
-
-//   const handleCheckboxChange = (e) => {
-//     const { name, checked } = e.target;
-//     setFormData((prev) => ({ ...prev, [name]: checked }));
-//   };
-
-//   const handleSubmit = (e) => {
-//     e.preventDefault();
-//     createPost(formData);
-//     if (!Loading) {
-//       navigate("/");
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-4">
-//       <div className="max-w-2xl mx-auto bg-gray-800 rounded-lg p-6">
-//         <h1 className="text-2xl font-bold mb-6">Create a New Debate</h1>
-//         <form onSubmit={handleSubmit} className="space-y-4">
-//           <div>
-//             <label htmlFor="title" className="block mb-1">
-//               Debate Title
-//             </label>
-//             <input
-//               type="text"
-//               id="title"
-//               name="title"
-//               value={formData.title}
-//               onChange={handleInputChange}
-//               className="w-full bg-gray-700 text-white rounded p-2"
-//               required
-//             />
-//           </div>
-//           <div>
-//             <label htmlFor="text" className="block mb-1">
-//               Debate Text
-//             </label>
-//             <textarea
-//               id="text"
-//               name="text"
-//               value={formData.text}
-//               onChange={handleInputChange}
-//               className="w-full bg-gray-700 text-white rounded p-2"
-//               rows={5}
-//               required
-//             />
-//           </div>
-//           <div>
-//             <label htmlFor="category" className="block mb-1">
-//               Category
-//             </label>
-//             <select
-//               id="categories"
-//               name="categories"
-//               value={formData.categories}
-//               onChange={handleInputChange}
-//               className="w-full bg-gray-700 text-white rounded p-2"
-//               required
-//             >
-//               <option value="">Select a category</option>
-//               <option value="politics">Politics</option>
-//               <option value="technology">Technology</option>
-//               <option value="science">Science</option>
-//               <option value="philosophy">Philosophy</option>
-//               <option value="other">Other</option>
-//             </select>
-//           </div>
-
-//           <button
-//             type="submit"
-//             className="w-full bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-//           >
-//             {Loading ? "Creating Post..." : "Create Debate"}{" "}
-//           </button>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }

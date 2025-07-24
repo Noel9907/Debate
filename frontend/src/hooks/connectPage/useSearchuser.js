@@ -20,7 +20,6 @@ const useSearchUsers = () => {
 
     setLoading(true);
     try {
-      console.log(`${import.meta.env.VITE_API_URL}/api/user/search?q=${query}`);
       const res = await fetch(
         `${
           import.meta.env.VITE_API_URL
@@ -29,6 +28,7 @@ const useSearchUsers = () => {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
+          credentials: "include",
         }
       );
       if (!res.ok) {
@@ -41,7 +41,6 @@ const useSearchUsers = () => {
       }
 
       setUser(data);
-      console.log(data);
       return data;
     } catch (error) {
       if (error.name !== "AbortError" && error.users == "none") {

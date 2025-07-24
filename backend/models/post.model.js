@@ -9,6 +9,8 @@ const postSchema = new mongoose.Schema(
       index: true,
     },
     image: { type: Boolean, required: true },
+    video: { type: Boolean, required: true },
+
     author_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

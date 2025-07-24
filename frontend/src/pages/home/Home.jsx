@@ -56,6 +56,7 @@ export default function Home() {
                     dislikes={post.dislikes_count}
                     categories={post.categories}
                     imageUrl={post.imageUrl}
+                    videoUrl={post.videoUrl}
                   />
                 ))
               )}
