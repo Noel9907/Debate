@@ -9,10 +9,41 @@ import {
 import sharp from "sharp";
 export const createPost = async (req, res) => {
   try {
-    const { username, text, author_id, categories, title } = req.body;
-
+    const { username, text, categories, title } = req.body;
+    const author_id = req.user;
     const imageFile = req.files?.image?.[0] || null;
     const videoFile = req.files?.video?.[0] || null;
+    console.log(username, text, author_id, categories, title);
+    if (!allThere({ username, text, author_id, categories, title })) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (text.length < 10) {
+      return res
+        .status(400)
+        .json({ error: "Text must be at least 10 characters long" });
+    }
+
+    if (title.length > 70) {
+      return res
+        .status(400)
+        .json({ error: "Title must be under 70 characters" });
+    }
+
+    let categoryArray;
+    if (typeof categories === "string") {
+      categoryArray = [categories];
+    } else if (Array.isArray(categories)) {
+      categoryArray = categories;
+    } else {
+      return res.status(400).json({ error: "Invalid categories format" });
+    }
+
+    if (categoryArray.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "At least one category is required" });
+    }
 
     const user = await User.findOne({ username });
     if (!user) {
@@ -24,14 +55,13 @@ export const createPost = async (req, res) => {
       text,
       title,
       author_id,
-      categories,
-      image: imageFile ? true : false,
-      video: videoFile ? true : false,
+      categories: categoryArray,
+      image: !!imageFile,
+      video: !!videoFile,
     });
 
     await post.save();
 
-    // Handle image upload
     if (imageFile) {
       const imageBuffer = await sharp(imageFile.buffer)
         .resize({ height: 1920, width: 1080, fit: "contain" })
@@ -41,7 +71,6 @@ export const createPost = async (req, res) => {
       await uploadFile(imageBuffer, imageName, imageFile.mimetype);
     }
 
-    // Handle video upload
     if (videoFile) {
       const videoName = generateFileName("post-video", post.id, author_id);
       await uploadFile(videoFile.buffer, videoName, videoFile.mimetype);
@@ -58,7 +87,7 @@ export const createPost = async (req, res) => {
       hasVideo: !!videoFile,
     });
   } catch (error) {
-    console.error("error in createPost controller", error);
+    console.error("Error in createPost controller:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -234,17 +263,15 @@ export const getTrendingPosts = async (req, res) => {
 };
 export const like = async (req, res) => {
   try {
-    const { postid, user, stance } = req.body;
+    const { postid, stance } = req.body;
 
-    console.log(postid + user + stance);
-    const isThere = allThere(postid, user, stance);
-    if (isThere) {
+    const userId = req.user._id;
+    if (postid && userId && stance) {
       const post = await Post.findById(postid);
 
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
       }
-      const userId = user;
 
       const userObjectId = new mongoose.Types.ObjectId(userId);
 
@@ -435,10 +462,6 @@ export const reportContent = async (req, res) => {
   }
 };
 
-function allThere(postid, user, stance) {
-  if (!postid || !user || !stance) {
-    return false;
-  } else {
-    return true;
-  }
+function allThere({ username, text, author_id, categories, title }) {
+  return !!(username && text && author_id && categories && title);
 }

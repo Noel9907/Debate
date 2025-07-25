@@ -1,13 +1,15 @@
+"use client";
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { X, Plus, Globe, ImageIcon, Video, FileText } from "lucide-react";
 import useCreatePost from "../../hooks/useCreatePost.js";
-import Footernav from "../../../components/Footernav.jsx";
 
 export default function CreatePost() {
   const name = JSON.parse(localStorage.getItem("duser")).username;
   const id = JSON.parse(localStorage.getItem("duser"))._id;
-
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: name,
     text: "",
@@ -21,205 +23,261 @@ export default function CreatePost() {
 
   const { createPost, Loading } = useCreatePost();
   const [charCount, setCharCount] = useState(0);
+  const [mediaFiles, setMediaFiles] = useState([]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
     if (name === "text") {
       setCharCount(value.length);
     }
   };
 
-  const handleCheckboxChange = (e) => {
-    const { name, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: checked }));
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    createPost(formData);
-    if (!Loading) {
-      navigate("/");
+
+    // Handle multiple files - for now just use the first image/video
+    const firstImage = mediaFiles.find((file) =>
+      file.type.startsWith("image/")
+    );
+    const firstVideo = mediaFiles.find((file) =>
+      file.type.startsWith("video/")
+    );
+
+    const submitData = {
+      ...formData,
+      image: firstImage?.file || null,
+      video: firstVideo?.file || null,
+    };
+
+    try {
+      const result = await createPost(submitData);
+      // Only redirect if the post was created successfully
+      if (result && !Loading) {
+        navigate("/");
+      }
+    } catch (error) {
+      // Handle error - stay on the page
+      console.error("Failed to create post:", error);
     }
   };
 
+  const handleMediaUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newMediaFiles = files.map((file) => ({
+      file,
+      type: file.type,
+      url: URL.createObjectURL(file),
+      id: Math.random().toString(36).substr(2, 9),
+    }));
+
+    setMediaFiles((prev) => [...prev, ...newMediaFiles]);
+  };
+
+  const removeMedia = (id) => {
+    setMediaFiles((prev) => prev.filter((media) => media.id !== id));
+  };
+
+  const canPost =
+    formData.text.trim().length > 0 &&
+    formData.title.trim().length > 0 &&
+    formData.categories;
+
+  const categories = [
+    { value: "politics", label: "Politics", icon: "🏛️" },
+    { value: "technology", label: "Technology", icon: "💻" },
+    { value: "science", label: "Science", icon: "🔬" },
+    { value: "philosophy", label: "Philosophy", icon: "🤔" },
+    { value: "other", label: "Other", icon: "💭" },
+  ];
+
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-4 md:p-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-gray-700">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-white">
-                    Create a New Debate
-                  </h1>
-                  <p className="text-gray-400 mt-1">
-                    Share your perspective and invite others to discuss
-                  </p>
-                </div>
-                <div className="px-3 py-1 bg-gray-700 text-gray-300 border border-gray-600 rounded-full text-sm">
-                  Posting as {name}
-                </div>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 max-w-2xl mx-auto">
+        <button
+          onClick={() => navigate(-1)}
+          className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          disabled={Loading}
+        >
+          <X className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={!canPost || Loading}
+          className="px-6 py-1.5 bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 disabled:cursor-not-allowed text-white rounded-full font-medium transition-colors"
+        >
+          {Loading ? "Posting..." : "Post"}
+        </button>
+      </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div className="space-y-2">
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-300"
-                >
-                  Debate Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Enter a compelling title for your debate"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors"
-                  required
-                />
+      <form
+        onSubmit={handleSubmit}
+        className="px-4 max-w-2xl mx-auto pb-24 sm:px-6"
+      >
+        {/* Title and Text Area with Avatar */}
+        <div className="flex gap-3 items-start mb-6">
+          {/* Avatar */}
+          <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-lg font-medium">
+              {name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+
+          {/* Writing Area */}
+          <div className="flex-1 min-w-0">
+            {/* Title */}
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder="Debate title..."
+              className="w-full bg-transparent text-xl font-medium placeholder-gray-500 border-none outline-none mb-3 text-white leading-tight"
+              required
+            />
+
+            {/* Main Text */}
+            <textarea
+              name="text"
+              value={formData.text}
+              onChange={handleInputChange}
+              placeholder="What's your take on this debate?"
+              className="w-full bg-transparent text-lg placeholder-gray-500 border-none outline-none resize-none min-h-[200px] md:min-h-[300px] text-white leading-relaxed"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Category Selection - Full Width, Centered */}
+        <div className="mb-6">
+          <p className="text-sm text-gray-400 mb-3 text-center">
+            Choose a category:
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {categories.map((category) => (
+              <button
+                key={category.value}
+                type="button"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    categories: category.value,
+                  }))
+                }
+                className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
+                  formData.categories === category.value
+                    ? "bg-red-500 border-red-500 text-white"
+                    : "bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-gray-500"
+                }`}
+              >
+                <span>{category.icon}</span>
+                <span className="text-sm font-medium">{category.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Media Upload Section - Full Width, Centered */}
+        <div>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <ImageIcon className="w-4 h-4 text-gray-400" />
+            <p className="text-sm text-gray-400">Add media to your debate</p>
+          </div>
+
+          {/* Upload Area */}
+          <div className="relative mb-4">
+            <input
+              type="file"
+              accept="image/*,video/*"
+              onChange={handleMediaUpload}
+              multiple
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              id="media-upload"
+            />
+            <label
+              htmlFor="media-upload"
+              className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-600 rounded-xl bg-gray-800/30 hover:bg-gray-800/50 hover:border-gray-500 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 text-gray-400 group-hover:text-gray-300">
+                <Plus className="w-5 h-5" />
+                <span className="text-sm font-medium">
+                  {mediaFiles.length > 0
+                    ? "Add more files"
+                    : "Click to add photos or videos"}
+                </span>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="text"
-                    className="block text-sm font-medium text-gray-300"
+              <p className="text-xs text-gray-500 mt-1">
+                Supports multiple files
+              </p>
+            </label>
+          </div>
+
+          {/* Multiple Media Preview */}
+          {mediaFiles.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <FileText className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-400">
+                  {mediaFiles.length} file{mediaFiles.length !== 1 ? "s" : ""}{" "}
+                  selected
+                </span>
+              </div>
+
+              {mediaFiles.map((media) => (
+                <div key={media.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => removeMedia(media.id)}
+                    className="absolute top-2 right-2 z-10 w-8 h-8 bg-black/80 hover:bg-black rounded-full flex items-center justify-center transition-colors"
                   >
-                    Debate Text <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-xs text-gray-400">
-                    {charCount} characters
-                  </span>
-                </div>
-                <textarea
-                  id="text"
-                  name="text"
-                  value={formData.text}
-                  onChange={handleInputChange}
-                  placeholder="Present your argument clearly and provide supporting evidence..."
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors"
-                  rows={8}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="categories"
-                  className="block text-sm font-medium text-gray-300"
-                >
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="categories"
-                  name="categories"
-                  value={formData.categories}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  <option value="politics">Politics</option>
-                  <option value="technology">Technology</option>
-                  <option value="science">Science</option>
-                  <option value="philosophy">Philosophy</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">
-                  Upload Image (optional)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      image: e.target.files[0],
-                    }))
-                  }
-                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
-      file:rounded-md file:border-0
-      file:text-sm file:font-semibold
-      file:bg-red-500 file:text-white
-      hover:file:bg-red-600"
-                />
-              </div>
+                    <X className="w-4 h-4" />
+                  </button>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">
-                  Upload Video (optional)
-                </label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      video: e.target.files[0],
-                    }))
-                  }
-                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
-      file:rounded-md file:border-0
-      file:text-sm file:font-semibold
-      file:bg-red-500 file:text-white
-      hover:file:bg-red-600"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="w-full sm:w-auto px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-opacity-50"
-                  disabled={Loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
-                  disabled={Loading}
-                >
-                  {Loading ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Creating Post...
-                    </>
-                  ) : (
-                    "Create Debate"
+                  {media.type.startsWith("image/") && (
+                    <div className="relative">
+                      <div className="absolute top-2 left-2 bg-black/80 rounded-full p-1">
+                        <ImageIcon className="w-3 h-3 text-white" />
+                      </div>
+                      <img
+                        src={media.url || "/placeholder.svg"}
+                        alt="Preview"
+                        className="w-full max-h-80 object-cover rounded-xl border border-gray-700"
+                      />
+                    </div>
                   )}
-                </button>
-              </div>
-            </form>
+
+                  {media.type.startsWith("video/") && (
+                    <div className="relative">
+                      <div className="absolute top-2 left-2 bg-black/80 rounded-full p-1">
+                        <Video className="w-3 h-3 text-white" />
+                      </div>
+                      <video
+                        controls
+                        className="w-full max-h-80 rounded-xl border border-gray-700"
+                        src={media.url}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </form>
+
+      {/* Bottom Toolbar - Simplified */}
+      <div className="fixed bottom-0 left-0 right-0 px-4 py-3 border-t border-gray-800 bg-gradient-to-br from-gray-900 to-black">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div className="flex items-center gap-4">
+            {charCount > 0 && (
+              <span className="text-sm text-gray-400">
+                {charCount} characters
+              </span>
+            )}
           </div>
         </div>
       </div>
-      <Footernav color={"post"} />
-    </>
+    </div>
   );
 }

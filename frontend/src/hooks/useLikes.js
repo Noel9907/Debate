@@ -29,6 +29,7 @@ export const useLikes = () => {
             user,
             stance,
           }),
+          credentials: "include",
         }
       );
 

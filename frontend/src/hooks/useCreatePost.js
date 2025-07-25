@@ -11,6 +11,8 @@ const useCreatePost = () => {
     if (!isValid) return;
 
     setLoading(true);
+    const toastId = toast.loading("Creating the debate..");
+
     try {
       const formData = new FormData();
       for (const key in formDataObj) {
@@ -30,13 +32,25 @@ const useCreatePost = () => {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create post");
+        console.log(errorData.error);
+        throw new Error(errorData.error || "Failed to create post");
       }
 
-      toast.success("Post created successfully!");
+      toast.update(toastId, {
+        render: "Debate created successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       return await res.json();
     } catch (error) {
-      toast.error(error.message || "Something went wrong");
+      console.log(error.message);
+      toast.update(toastId, {
+        render: error.message || "Something went wrong",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } finally {
       setLoading(false);
     }
