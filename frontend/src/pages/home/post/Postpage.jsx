@@ -1,137 +1,102 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  ArrowLeft,
+  Users,
+  TrendingUp,
   MessageSquare,
   ThumbsUp,
   ThumbsDown,
-  Award,
   Share2,
-  Users,
-  TrendingUp,
+  Award,
   Copy,
   Facebook,
+  Twitter,
   Linkedin,
-  X,
 } from "lucide-react";
-import CommentComponent from "./CommentComponent";
-import useCreateComment from "../../../hooks/useCreateComment.js";
-import { useGetComments } from "../../../hooks/useGetComments.js";
-import { useGetPost } from "../../../hooks/useGetPosts.js";
-import { useLikes } from "../../../hooks/useLikes.js";
-import Footernav from "../../../../components/Footernav.jsx";
+import { useState, useRef, useEffect } from "react";
+import useLikes from "../../../hooks/useLikes";
+import { useGetPost } from "../../../hooks/useGetPosts";
 
-export default function Postpage() {
-  const CurrentUser = JSON.parse(localStorage.getItem("duser"));
-  const commentid = CurrentUser?._id;
-  const { postid } = useParams();
+export default function Posts({
+  username,
+  likes_count,
+  dislikes_count,
+  comments_count,
+  categories,
+  createdAt,
+  id,
+  text,
+  title,
+  imageUrl,
+  videoUrl,
+  isLiked,
+  isDisliked,
+}) {
+  // Safe user data retrieval with error handling
+  const getCurrentUser = () => {
+    try {
+      const userData = localStorage.getItem("duser");
+      if (!userData) return null;
+      const parsed = JSON.parse(userData);
+      return parsed?._id || null;
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      return null;
+    }
+  };
+
+  const CurrentUser = getCurrentUser();
+  const { handleLike, likeLoading } = useLikes();
   const { getPost, PostLoading, post } = useGetPost();
-  const [postData, setPostData] = useState({
-    _id: "",
-    username: "",
-    likes: 0,
-    dislikes: 0,
-    dislikes_count: 0,
-    likes_count: 0,
-    text: "",
-    title: "",
-    categories: [],
-  });
 
-  // Share functionality
+  // Share functionality state
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareMenuRef = useRef(null);
 
-  // Image modal state
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // Fetch post data when postid changes
-  useEffect(() => {
-    if (postid) {
-      getPost(postid);
-    }
-  }, [postid]);
-
-  // Update local state when post data changes
-  useEffect(() => {
-    if (post && post._id) {
-      setPostData(post);
-      // Initialize userVote based on whether user has liked or disliked
-      if (
-        post.likes &&
-        Array.isArray(post.likes) &&
-        post.likes.includes(CurrentUser?._id)
-      ) {
-        setUserVote("up");
-      } else if (
-        post.dislikes &&
-        Array.isArray(post.dislikes) &&
-        post.dislikes.includes(CurrentUser?._id)
-      ) {
-        setUserVote("down");
-      } else {
-        setUserVote(null);
-      }
-    }
-  }, [post, CurrentUser]);
-
-  const {
-    _id,
-    username,
-    likes,
-    likes_count,
-    dislikes_count,
-    dislikes,
-    text,
-    title,
-    categories,
-    imageUrl,
-  } = postData;
-
-  const { handleLike, likeLoading } = useLikes();
-
-  // Upvote/downvote state functionality
+  // Local state for votes - initialize with props
   const [upvotes, setUpvotes] = useState(likes_count || 0);
   const [downvotes, setDownvotes] = useState(dislikes_count || 0);
-  const [userVote, setUserVote] = useState(null);
+  const [userVote, setUserVote] = useState(
+    isLiked ? "up" : isDisliked ? "down" : null
+  );
 
-  // Update vote counts when post data changes
+  // Update local state when props change (important for when parent updates)
   useEffect(() => {
     setUpvotes(likes_count || 0);
     setDownvotes(dislikes_count || 0);
-  }, [likes, dislikes]);
+    setUserVote(isLiked ? "up" : isDisliked ? "down" : null);
+  }, [likes_count, dislikes_count, isLiked, isDisliked]);
 
-  // Calculate net votes
+  // Process images - handle string, array, or null/undefined
+  const processImages = (imageData) => {
+    if (!imageData) return [];
+    try {
+      if (typeof imageData === "string") {
+        const urls = imageData
+          .split(",")
+          .map((url) => url.trim())
+          .filter((url) => url && url.length > 0);
+        return urls;
+      }
+      if (Array.isArray(imageData)) {
+        return imageData.filter(
+          (url) => url && typeof url === "string" && url.trim().length > 0
+        );
+      }
+    } catch (error) {
+      console.error("Error processing images:", error);
+    }
+    return [];
+  };
+
+  const images = processImages(imageUrl).slice(0, 3);
+
+  // Calculate net votes safely
   const netVotes = upvotes - downvotes;
 
-  // Get comments from hook
-  const {
-    getComments,
-    isLoading: commentsLoading,
-    comments,
-    error: commentsError,
-    updateComments,
-  } = useGetComments();
-
-  // Fetch comments on post load/update
-  useEffect(() => {
-    if (_id) {
-      console.log("Fetching comments for post:", _id);
-      getComments(_id)
-        .then(() => console.log("Comments fetched successfully"))
-        .catch((error) => console.error("Error fetching comments:", error));
-    }
-  }, [getComments, _id]);
-
-  const [newComment, setNewComment] = useState("");
-  const [isFor, setIsFor] = useState(true);
-  const [commentError, setCommentError] = useState("");
-  const { createComment, LoadingComment } = useCreateComment();
-
-  // Format number function
+  // Format large numbers to k, M format
   const formatNumber = (num) => {
+    if (!num || isNaN(num)) return "0";
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
     }
@@ -141,172 +106,178 @@ export default function Postpage() {
     if (num >= 1000) {
       return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     }
-    return num;
+    return num.toString();
   };
 
-  // Helper function to process imageUrl
-  const getImages = () => {
-    if (!imageUrl) return [];
-
-    // If imageUrl is already an array, return it (limited to 3)
-    if (Array.isArray(imageUrl)) {
-      return imageUrl.slice(0, 3);
+  // Get grid layout class based on number of images
+  const getImageGridClass = (imageCount) => {
+    switch (imageCount) {
+      case 1:
+        return "grid-cols-1";
+      case 2:
+        return "grid-cols-2";
+      case 3:
+        return "grid-cols-2";
+      default:
+        return "grid-cols-1";
     }
+  };
 
-    // If imageUrl is a string, return it as a single-item array
-    if (typeof imageUrl === "string") {
-      return [imageUrl];
+  // Get individual image class based on count and index
+  const getImageClass = (imageCount, index) => {
+    if (imageCount === 3 && index === 2) {
+      return "col-span-2";
     }
-
-    return [];
-  };
-
-  const images = getImages();
-
-  // Image modal functions
-  const openImageModal = (index) => {
-    setCurrentImageIndex(index);
-    setShowImageModal(true);
-  };
-
-  const closeImageModal = () => {
-    setShowImageModal(false);
-  };
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e) => {
-    if (!showImageModal) return;
-
-    if (e.key === "Escape") {
-      closeImageModal();
-    } else if (e.key === "ArrowRight") {
-      nextImage();
-    } else if (e.key === "ArrowLeft") {
-      prevImage();
-    }
+    return "";
   };
 
   const handleUpvote = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (!CurrentUser) {
       alert("You need to be logged in to vote");
       return;
     }
-    // Don't allow actions while already loading
+
     if (likeLoading) {
       return;
     }
+
+    // Store original values for rollback
+    const originalUpvotes = upvotes;
+    const originalDownvotes = downvotes;
+    const originalUserVote = userVote;
+
     try {
-      // Call API first without optimistic updates
-      await handleLike({
-        postid: _id,
-        user: CurrentUser._id,
+      // Optimistic update first
+      if (userVote === "up") {
+        // User is removing their upvote
+        setUserVote(null);
+        setUpvotes((prev) => Math.max(0, prev - 1));
+      } else {
+        // User is adding upvote (and possibly removing downvote)
+        if (userVote === "down") {
+          setDownvotes((prev) => Math.max(0, prev - 1));
+        }
+        setUserVote("up");
+        setUpvotes((prev) => prev + 1);
+      }
+
+      // Call API
+      const result = await handleLike({
+        postid: id,
+        user: CurrentUser,
         stance: "like",
       });
-      // After successful API call, fetch the updated post
-      getPost(postid);
+
+      // If API call was successful, update with server response
+      if (
+        result &&
+        result.likes_count !== undefined &&
+        result.dislikes_count !== undefined
+      ) {
+        setUpvotes(result.likes_count);
+        setDownvotes(result.dislikes_count);
+        setUserVote(result.isLiked ? "up" : result.isDisliked ? "down" : null);
+      } else {
+        // If API call failed, rollback the optimistic update
+        setUpvotes(originalUpvotes);
+        setDownvotes(originalDownvotes);
+        setUserVote(originalUserVote);
+      }
     } catch (error) {
       console.error("Error handling upvote:", error);
+      // Rollback optimistic update
+      setUpvotes(originalUpvotes);
+      setDownvotes(originalDownvotes);
+      setUserVote(originalUserVote);
     }
   };
 
   const handleDownvote = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (!CurrentUser) {
       alert("You need to be logged in to vote");
       return;
     }
-    // Don't allow actions while already loading
+
     if (likeLoading) {
       return;
     }
+
+    // Store original values for rollback
+    const originalUpvotes = upvotes;
+    const originalDownvotes = downvotes;
+    const originalUserVote = userVote;
+
     try {
-      // Call API first without optimistic updates
-      await handleLike({
-        postid: _id,
-        user: CurrentUser._id,
+      // Optimistic update first
+      if (userVote === "down") {
+        // User is removing their downvote
+        setUserVote(null);
+        setDownvotes((prev) => Math.max(0, prev - 1));
+      } else {
+        // User is adding downvote (and possibly removing upvote)
+        if (userVote === "up") {
+          setUpvotes((prev) => Math.max(0, prev - 1));
+        }
+        setUserVote("down");
+        setDownvotes((prev) => prev + 1);
+      }
+
+      // Call API
+      const result = await handleLike({
+        postid: id,
+        user: CurrentUser,
         stance: "dislike",
       });
-      // After successful API call, fetch the updated post
-      getPost(postid);
+
+      // If API call was successful, update with server response
+      if (
+        result &&
+        result.likes_count !== undefined &&
+        result.dislikes_count !== undefined
+      ) {
+        setUpvotes(result.likes_count);
+        setDownvotes(result.dislikes_count);
+        setUserVote(result.isLiked ? "up" : result.isDisliked ? "down" : null);
+      } else {
+        // If API call failed, rollback the optimistic update
+        setUpvotes(originalUpvotes);
+        setDownvotes(originalDownvotes);
+        setUserVote(originalUserVote);
+      }
     } catch (error) {
       console.error("Error handling downvote:", error);
+      // Rollback optimistic update
+      setUpvotes(originalUpvotes);
+      setDownvotes(originalDownvotes);
+      setUserVote(originalUserVote);
     }
   };
 
-  // Comment submission handler with optimistic update
-  const handleSubmitComment = async (e) => {
-    e.preventDefault();
-    setCommentError("");
-    if (!CurrentUser) {
-      setCommentError("You must be logged in to comment");
-      return;
-    }
-    if (newComment.trim() && _id) {
-      const comment = {
-        postid: _id,
-        username: CurrentUser?.username || "Anonymous",
-        text: newComment,
-        position: isFor,
-        author_id: commentid,
-      };
-      console.log("Sending comment data:", comment);
-      // Create an optimistic comment with a temporary ID
-      const optimisticComment = {
-        ...comment,
-        _id: `temp-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-      // Add the optimistic comment to the UI immediately
-      updateComments([optimisticComment, comments]);
-      // Clear the input
-      setNewComment("");
-      try {
-        await createComment(comment);
-        // After successful creation, fetch fresh comments
-        getComments(_id);
-      } catch (error) {
-        console.error("Error creating comment:", error);
-        setCommentError("Failed to post comment. Please try again.");
-        // Remove the optimistic comment on failure
-        updateComments(comments.filter((c) => c._id !== optimisticComment._id));
-      }
-    }
-  };
+  // Format date safely
+  const formattedDate = createdAt
+    ? (() => {
+        try {
+          return new Date(createdAt).toLocaleDateString();
+        } catch (error) {
+          console.error("Error formatting date:", error);
+          return "";
+        }
+      })()
+    : "";
 
-  // Reply handler for nested comments
-  const handleReply = (commentId, replyText, isFor) => {
-    const updatedComments = comments.map((comment) => {
-      if (comment._id === commentId) {
-        return {
-          ...comment,
-          replies: [
-            ...(comment.replies || []),
-            {
-              _id: `${commentId}-${(comment.replies?.length || 0) + 1}`,
-              username: CurrentUser?.username || "Anonymous",
-              text: replyText,
-              isFor,
-            },
-          ],
-        };
-      }
-      return comment;
-    });
-    updateComments(updatedComments);
-  };
+  // Calculate reading time safely
+  const readingTime =
+    text && typeof text === "string"
+      ? Math.max(1, Math.ceil(text.split(" ").length / 200))
+      : 1;
 
-  // Share functionality
+  // Share menu handlers
   const handleShareButtonClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -314,41 +285,56 @@ export default function Postpage() {
     setCopySuccess(false);
   };
 
-  const copyToClipboard = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(
-      () => {
+  const shareUrl = `${window.location.origin}/test/${id}`;
+
+  const copyToClipboard = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
-      },
-      (err) => {
-        console.error("Could not copy text: ", err);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 2000);
+        } catch (fallbackErr) {
+          console.error("Fallback copy failed:", fallbackErr);
+        }
+        document.body.removeChild(textArea);
       }
-    );
+    } catch (err) {
+      console.error("Could not copy text: ", err);
+    }
   };
 
   const shareToSocialMedia = (platform) => {
-    const url = encodeURIComponent(window.location.href);
-    const text = encodeURIComponent(`Check out this debate: ${title}`);
-    let shareUrl = "";
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const encodedText = encodeURIComponent(`Check out this debate: ${title}`);
+    let shareLink = "";
+
     switch (platform) {
       case "twitter":
-        shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+        shareLink = `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`;
         break;
       case "facebook":
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
         break;
       case "linkedin":
-        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+        shareLink = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
         break;
       default:
         return;
     }
-    window.open(shareUrl, "_blank", "width=600,height=400");
+
+    window.open(shareLink, "_blank", "width=600,height=400");
     setShowShareMenu(false);
   };
 
-  // Close share menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -358,465 +344,258 @@ export default function Postpage() {
         setShowShareMenu(false);
       }
     };
+
     if (showShareMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showShareMenu]);
 
-  // Keyboard navigation for image modal
-  useEffect(() => {
-    if (showImageModal) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden"; // Prevent background scrolling
-    } else {
-      document.body.style.overflow = "unset";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "unset";
-    };
-  }, [showImageModal]);
-
-  // Calculate reading time (using 200 words/min average)
-  const readingTime = text
-    ? Math.max(1, Math.ceil(text.split(" ").length / 200))
-    : 1;
-
-  // Format date (using current date for demo)
-  const formattedDate = new Date().toLocaleDateString();
-
-  // Mock debate stats - using the length of comments array
-  const debate = {
-    participants: 25,
-    comments: comments.length || 0,
-  };
-
-  // Handle post loading state
-  if (PostLoading) {
+  // Early return if essential props are missing
+  if (!id) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex justify-center items-center">
-        <p>Loading post...</p>
+      <div className="p-2 sm:p-3">
+        <div className="bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 border border-gray-700">
+          <p className="text-gray-400">Error: Post ID is required</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-      <header className="bg-gray-900 bg-opacity-50 backdrop-blur-md py-4 sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <Link
-            to="/"
-            className="text-white hover:text-red-400 transition-colors flex items-center"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Feed
-          </Link>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        {!_id ? (
-          <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6 mb-8 text-center">
-            <p>Post not found or still loading...</p>
-          </div>
-        ) : (
-          <>
-            <article className="bg-gray-800 bg-opacity-50 rounded-lg p-6 mb-8">
-              {/* Post header with profile pic and meta info */}
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="relative">
-                  <img
-                    src={`https://avatar.iran.liara.run/public/boy?username=${username}`}
-                    alt={username}
-                    width={40}
-                    height={40}
-                    className="rounded-full bg-gradient-to-r from-purple-500 to-blue-500 p-0.5"
-                  />
-                  {netVotes > 50 && (
-                    <Award className="w-4 h-4 text-yellow-400 absolute -top-1 -right-1" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold text-white">{title}</h1>
-                  <div className="flex flex-wrap text-sm text-gray-400">
-                    <span className="mr-2">
-                      by{" "}
-                      <Link to={`/profile/${username}`}>
-                        <span className="text-blue-400">{username}</span>
-                      </Link>
-                    </span>
-                    <span className="mr-2">• {formattedDate}</span>
-                    <span className="mr-2">• {readingTime} min read</span>
-                    {Array.isArray(categories) && categories.length > 0 && (
-                      <span className="mr-2">
-                        •
-                        <span className="text-purple-400">
-                          {" "}
-                          {categories.join(", ")}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Main content area - responsive layout */}
-              <div className={`${images.length > 0 ? "lg:flex lg:gap-6" : ""}`}>
-                {/* Images section - left side on large screens */}
-                {images.length > 0 && (
-                  <div className="mb-6 lg:mb-0 lg:w-1/2 lg:flex-shrink-0">
-                    {images.length === 1 ? (
-                      // Single image - full width
-                      <div
-                        className="rounded-lg overflow-hidden cursor-pointer"
-                        onClick={() => openImageModal(0)}
-                      >
-                        <img
-                          src={images[0] || "/placeholder.svg"}
-                          alt="Post image"
-                          className="w-full h-auto lg:h-64 xl:h-80 object-cover bg-gray-700 hover:opacity-90 transition-opacity"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      </div>
-                    ) : images.length === 2 ? (
-                      // Two images - side by side
-                      <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                        {images.map((img, index) => (
-                          <img
-                            key={index}
-                            src={img || "/placeholder.svg"}
-                            alt={`Post image ${index + 1}`}
-                            className="w-full h-48 lg:h-32 xl:h-40 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => openImageModal(index)}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      // Three images - first large, other two stacked
-                      <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                        <img
-                          src={images[0] || "/placeholder.svg"}
-                          alt="Post image 1"
-                          className="w-full h-96 lg:h-64 xl:h-80 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => openImageModal(0)}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                        <div className="grid grid-rows-2 gap-2">
-                          <img
-                            src={images[1] || "/placeholder.svg"}
-                            alt="Post image 2"
-                            className="w-full h-47 lg:h-31 xl:h-39 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => openImageModal(1)}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <img
-                            src={images[2] || "/placeholder.svg"}
-                            alt="Post image 3"
-                            className="w-full h-47 lg:h-31 xl:h-39 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => openImageModal(2)}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Content section - right side on large screens */}
-                <div className={`${images.length > 0 ? "lg:w-1/2" : "w-full"}`}>
-                  <p className="text-gray-300 mb-6">{text}</p>
-
-                  {/* Stats section */}
-                  <div className="flex justify-between text-sm text-gray-400 mb-4">
-                    <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-1 text-blue-400" />{" "}
-                      {formatNumber(debate.participants)} participants
-                    </span>
-                    <span className="flex items-center">
-                      <TrendingUp className="w-4 h-4 mr-1 text-green-400" />{" "}
-                      {formatNumber(netVotes)} net points
-                    </span>
-                    <span className="flex items-center">
-                      <MessageSquare className="w-4 h-4 mr-1 text-purple-400" />{" "}
-                      {formatNumber(debate.comments)} comments
-                    </span>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex justify-between mt-6">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleUpvote}
-                        disabled={likeLoading}
-                        className={`flex items-center px-3 py-1 rounded-md hover:bg-gray-700 transition-colors ${
-                          userVote === "up"
-                            ? "text-green-400"
-                            : "text-gray-400 hover:text-white"
-                        } ${
-                          likeLoading ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        <ThumbsUp
-                          className={`w-4 h-4 mr-2 ${
-                            userVote === "up" ? "fill-current" : ""
-                          }`}
-                        />
-                        <span>Upvote</span>
-                        <span className="ml-1 text-xs bg-gray-700 px-1.5 py-0.5 rounded-full">
-                          {formatNumber(upvotes)}
-                        </span>
-                      </button>
-                      <button
-                        onClick={handleDownvote}
-                        disabled={likeLoading}
-                        className={`flex items-center px-3 py-1 rounded-md hover:bg-gray-700 transition-colors ${
-                          userVote === "down"
-                            ? "text-red-400"
-                            : "text-gray-400 hover:text-white"
-                        } ${
-                          likeLoading ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        <ThumbsDown
-                          className={`w-4 h-4 mr-2 ${
-                            userVote === "down" ? "fill-current" : ""
-                          }`}
-                        />
-                        <span>Downvote</span>
-                        <span className="ml-1 text-xs bg-gray-700 px-1.5 py-0.5 rounded-full">
-                          {formatNumber(downvotes)}
-                        </span>
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <button
-                        className="flex items-center text-gray-400 hover:text-white transition-colors px-3 py-1 rounded-md hover:bg-gray-700"
-                        onClick={handleShareButtonClick}
-                      >
-                        <Share2 className="w-4 h-4 mr-2" />
-                        Share
-                      </button>
-                      {/* Share Menu Dropdown */}
-                      {showShareMenu && (
-                        <div
-                          ref={shareMenuRef}
-                          className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-50 py-1 border border-gray-700"
-                        >
-                          <button
-                            onClick={copyToClipboard}
-                            className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
-                          >
-                            <Copy className="w-4 h-4 mr-3" />
-                            {copySuccess ? "Copied!" : "Copy Link"}
-                          </button>
-                          <button
-                            onClick={() => shareToSocialMedia("twitter")}
-                            className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
-                          >
-                            <X className="w-4 h-4 mr-3" />
-                            Twitter
-                          </button>
-                          <button
-                            onClick={() => shareToSocialMedia("facebook")}
-                            className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
-                          >
-                            <Facebook className="w-4 h-4 mr-3" />
-                            Facebook
-                          </button>
-                          <button
-                            onClick={() => shareToSocialMedia("linkedin")}
-                            className="flex items-center px-4 py-2 text-sm text-gray-3000 hover:bg-gray-700 w-full text-left"
-                          >
-                            <Linkedin className="w-4 h-4 mr-3" />
-                            LinkedIn
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Vote breakdown tooltip */}
-                  {(upvotes > 0 || downvotes > 0) && (
-                    <div className="mt-3 text-xs text-gray-500">
-                      {formatNumber(upvotes)} upvotes •{" "}
-                      {formatNumber(downvotes)} downvotes •{" "}
-                      {Math.round((upvotes / (upvotes + downvotes || 1)) * 100)}
-                      % positive
-                    </div>
-                  )}
-                </div>
-              </div>
-            </article>
-
-            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Comments</h2>
-              <div className="space-y-4 mb-6">
-                {commentsLoading ? (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-pulse text-gray-400">
-                      Loading comments...
-                    </div>
-                  </div>
-                ) : commentsError ? (
-                  <div className="p-3 bg-red-800 bg-opacity-20 border border-red-500 rounded-md">
-                    <p className="text-red-300">
-                      Error loading comments: {commentsError}
-                    </p>
-                    <button
-                      onClick={() => getComments(_id)}
-                      className="text-sm text-red-400 hover:text-red-300 mt-2"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                ) : comments.length > 0 ? (
-                  comments.map((comment, index) => (
-                    <CommentComponent
-                      key={comment._id || index}
-                      comment={comment}
-                      onReply={handleReply}
-                      isOptimistic={comment._id?.startsWith("temp-")}
-                    />
-                  ))
-                ) : (
-                  <p className="text-gray-400 text-center py-4">
-                    Be the first to comment!
-                  </p>
-                )}
-              </div>
-
-              <form onSubmit={handleSubmitComment} className="space-y-4">
-                {commentError && (
-                  <div className="p-2 bg-red-600 bg-opacity-20 border border-red-400 rounded text-red-200 text-sm">
-                    {commentError}
-                  </div>
-                )}
-                <div>
-                  <label
-                    htmlFor="comment"
-                    className="block text-sm font-medium text-gray-400 mb-2"
-                  >
-                    Add your comment
-                  </label>
-                  <textarea
-                    id="comment"
-                    rows={3}
-                    className="w-full bg-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Share your thoughts..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                  ></textarea>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <label className="inline-flex items-center text-sm text-gray-400">
-                      <input
-                        type="radio"
-                        name="position"
-                        value="for"
-                        checked={isFor}
-                        onChange={() => setIsFor(true)}
-                        className="mr-1"
-                      />
-                      For
-                    </label>
-                    <label className="inline-flex items-center text-sm text-gray-400">
-                      <input
-                        type="radio"
-                        name="position"
-                        value="against"
-                        checked={!isFor}
-                        onChange={() => setIsFor(false)}
-                        className="mr-1"
-                      />
-                      Against
-                    </label>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={LoadingComment}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50"
-                  >
-                    {LoadingComment ? "Posting..." : "Post Comment"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </>
-        )}
-
-        {/* Image Modal */}
-        {showImageModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-            <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
-              {/* Close button */}
-              <button
-                onClick={closeImageModal}
-                className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              {/* Navigation arrows - only show if multiple images */}
-              {images.length > 1 && (
-                <>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 transition-colors"
-                  >
-                    <ArrowLeft className="w-6 h-6" />
-                  </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 transition-colors"
-                  >
-                    <ArrowLeft className="w-6 h-6 transform rotate-180" />
-                  </button>
-                </>
-              )}
-
-              {/* Main image */}
+    <div className="p-2 sm:p-3 transform hover:scale-100 sm:hover:scale-102 transition-transform duration-200">
+      <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500 relative">
+        <Link
+          to={`/posts/${id}`}
+          state={{
+            id,
+            username,
+            likes: likes_count,
+            dislikes: dislikes_count,
+            categories,
+            text,
+            title,
+            images: images,
+          }}
+          className="block"
+        >
+          <div className="flex items-center space-x-2 sm:space-x-4 mb-2 sm:mb-4">
+            <div className="relative flex-shrink-0">
               <img
-                src={images[currentImageIndex] || "/placeholder.svg"}
-                alt={`Post image ${currentImageIndex + 1}`}
-                className="max-w-full max-h-full object-contain"
+                src={`https://avatar.iran.liara.run/public/boy?username=${username}`}
+                alt={username}
+                width={32}
+                height={32}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 p-0.5"
                 onError={(e) => {
-                  e.target.src = "/placeholder.svg";
+                  e.target.src = "/placeholder.svg?height=40&width=40";
                 }}
               />
-
-              {/* Image counter - only show if multiple images */}
-              {images.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 bg-opacity-75 text-white px-3 py-1 rounded-full text-sm">
-                  {currentImageIndex + 1} / {images.length}
-                </div>
+              {netVotes > 50 && (
+                <Award className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 absolute -top-1 -right-1" />
               )}
             </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-semibold text-white group-hover:text-blue-400 transition-colors truncate">
+                {title}
+              </h3>
+              <div className="flex flex-wrap text-xs sm:text-sm text-gray-400">
+                <span className="mr-2 truncate">
+                  by <span className="text-blue-400">{username}</span>
+                </span>
+                {formattedDate && (
+                  <span className="mr-2 truncate">• {formattedDate}</span>
+                )}
+                {readingTime && (
+                  <span className="mr-2 truncate">
+                    • {readingTime} min read
+                  </span>
+                )}
+                {categories && categories.length > 0 && (
+                  <span className="truncate">
+                    •
+                    <span className="text-purple-400">
+                      {" "}
+                      {categories.join(", ")}
+                    </span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
 
-            {/* Click outside to close */}
-            <div className="absolute inset-0 -z-10" onClick={closeImageModal} />
+          <p className="text-xs sm:text-sm mb-3 sm:mb-4 text-gray-300 line-clamp-2 sm:line-clamp-3">
+            {text}
+          </p>
+
+          {/* Image Grid */}
+          {images.length > 0 && (
+            <div
+              className={`grid gap-2 mb-3 sm:mb-4 ${getImageGridClass(
+                images.length
+              )}`}
+            >
+              {images.map((imageurl, index) => (
+                <div
+                  key={index}
+                  className={`relative overflow-hidden rounded-lg bg-gray-700 ${getImageClass(
+                    images.length,
+                    index
+                  )}`}
+                >
+                  <img
+                    src={imageurl || "/placeholder.svg"}
+                    alt={`Post image ${index + 1}`}
+                    className="w-full h-48 sm:h-56 object-cover hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {videoUrl && (
+            <div className="mb-4 rounded-lg overflow-hidden bg-black">
+              <video
+                controls
+                className="w-full h-64 object-cover"
+                src={videoUrl}
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            </div>
+          )}
+        </Link>
+
+        {/* Stats Bar */}
+        <div className="grid grid-cols-3 gap-1 text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4">
+          <span className="flex items-center justify-start">
+            <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-400" />
+            <span className="truncate">
+              {formatNumber((comments_count || 0) + upvotes + downvotes)}
+            </span>
+            <span className="hidden sm:inline ml-1">participants</span>
+          </span>
+          <span className="flex items-center justify-center">
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-green-400" />
+            <span className="truncate">{formatNumber(netVotes)}</span>
+            <span className="hidden sm:inline ml-1">net points</span>
+          </span>
+          <span className="flex items-center justify-end">
+            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-purple-400" />
+            <span className="truncate">
+              {formatNumber(comments_count || 0)}
+            </span>
+            <span className="hidden sm:inline ml-1">comments</span>
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap sm:flex-nowrap justify-between gap-1 sm:gap-2">
+          <div className="flex gap-1 sm:gap-2">
+            <button
+              onClick={handleUpvote}
+              disabled={likeLoading}
+              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 ${
+                userVote === "up"
+                  ? "text-green-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <ThumbsUp
+                className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${
+                  userVote === "up" ? "fill-current" : ""
+                }`}
+              />
+              <span className="text-xs sm:text-sm">Upvote</span>
+              <span className="ml-1 text-xs bg-gray-700 px-1 py-0.5 rounded-full">
+                {formatNumber(upvotes)}
+              </span>
+            </button>
+            <button
+              onClick={handleDownvote}
+              disabled={likeLoading}
+              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 ${
+                userVote === "down"
+                  ? "text-red-400"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <ThumbsDown
+                className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${
+                  userVote === "down" ? "fill-current" : ""
+                }`}
+              />
+              <span className="text-xs sm:text-sm">Downvote</span>
+              <span className="ml-1 text-xs bg-gray-700 px-1 py-0.5 rounded-full">
+                {formatNumber(downvotes)}
+              </span>
+            </button>
+          </div>
+
+          <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-0 relative">
+            <button
+              onClick={handleShareButtonClick}
+              className="flex items-center text-gray-400 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-gray-700"
+            >
+              <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Share</span>
+            </button>
+
+            {/* Share Menu Dropdown */}
+            {showShareMenu && (
+              <div
+                ref={shareMenuRef}
+                className="absolute top-full right-0 mt-1 w-48 bg-gray-800 rounded-md shadow-lg z-50 py-1 border border-gray-700"
+              >
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Copy className="w-4 h-4 mr-3" />
+                  {copySuccess ? "Copied!" : "Copy Link"}
+                </button>
+                <button
+                  onClick={() => shareToSocialMedia("twitter")}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Twitter className="w-4 h-4 mr-3" />
+                  Twitter
+                </button>
+                <button
+                  onClick={() => shareToSocialMedia("facebook")}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Facebook className="w-4 h-4 mr-3" />
+                  Facebook
+                </button>
+                <button
+                  onClick={() => shareToSocialMedia("linkedin")}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                >
+                  <Linkedin className="w-4 h-4 mr-3" />
+                  LinkedIn
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Vote breakdown tooltip - shows on hover */}
+        {(upvotes > 0 || downvotes > 0) && (
+          <div className="mt-3 text-xs text-gray-500">
+            {formatNumber(upvotes)} upvotes • {formatNumber(downvotes)}{" "}
+            downvotes •{" "}
+            {Math.round((upvotes / (upvotes + downvotes || 1)) * 100)}% positive
           </div>
         )}
-      </main>
-
-      <footer className="sticky bottom-0 z-50 bg-gray-900">
-        <Footernav />
-      </footer>
+      </div>
     </div>
   );
 }

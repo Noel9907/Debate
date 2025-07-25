@@ -95,6 +95,7 @@ export const createPost = async (req, res) => {
 export const post = async (req, res) => {
   try {
     const { postid } = req.query;
+    userId = req.user._id;
     if (!postid) {
       throw new Error("no Post id");
     }
@@ -108,7 +109,6 @@ export const post = async (req, res) => {
         `post-${post._id}-${post.author_id}`
       );
     }
-    console.log(post);
     res.status(200).json([post]);
   } catch (error) {
     res.status(400).json("error in getting post controller");
@@ -117,65 +117,121 @@ export const post = async (req, res) => {
 
 export const getPosts = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Cap at 100
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const skip = (page - 1) * limit;
+    const userId = req.user?._id?.toString(); // Ensure string format
 
-    const posts = await Post.aggregate([
+    // Fetch posts with required fields
+    const posts = await Post.find(
+      {},
       {
-        $addFields: {
-          engagementScore: {
-            $add: [
-              { $multiply: ["$likes_count", 2] },
-              { $multiply: ["$dislikes_count", 1] },
-              { $multiply: ["$comments_count", 3] },
-            ],
-          },
-        },
+        _id: 1,
+        username: 1,
+        title: 1,
+        text: 1,
+        image: 1,
+        video: 1,
+        author_id: 1,
+        likes: 1,
+        dislikes: 1,
+        likes_count: 1,
+        dislikes_count: 1,
+        comments_count: 1,
+        engagement_score: 1,
+        categories: 1,
+        createdAt: 1,
+      }
+    )
+      .sort({ engagement_score: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    const batchSize = 10;
+    const postsWithUrls = [];
+
+    for (let i = 0; i < posts.length; i += batchSize) {
+      const batch = posts.slice(i, i + batchSize);
+
+      const batchResults = await Promise.all(
+        batch.map(async (post) => {
+          const postId = post._id.toString();
+          const authorId = post.author_id.toString();
+
+          const urlPromises = [];
+
+          if (post.image) {
+            urlPromises.push(
+              getObjectSignedUrl(`post-image-${postId}-${authorId}`)
+                .then((url) => ({ type: "image", url }))
+                .catch(() => ({ type: "image", url: null }))
+            );
+          }
+
+          if (post.video) {
+            urlPromises.push(
+              getObjectSignedUrl(`post-video-${postId}-${authorId}`)
+                .then((url) => ({ type: "video", url }))
+                .catch(() => ({ type: "video", url: null }))
+            );
+          }
+
+          const urls = await Promise.all(urlPromises);
+
+          const result = { ...post };
+
+          // Set signed URLs
+          result.imageUrl = post.image
+            ? urls.find((u) => u.type === "image")?.url || null
+            : null;
+          result.videoUrl = post.video
+            ? urls.find((u) => u.type === "video")?.url || null
+            : null;
+
+          // Check like/dislike status
+          if (userId) {
+            const userKey = userId.toString();
+
+            result.isLiked =
+              post.likes &&
+              Object.hasOwn(post.likes, userKey) &&
+              post.likes[userKey] === true;
+
+            result.isDisliked =
+              post.dislikes &&
+              Object.hasOwn(post.dislikes, userKey) &&
+              post.dislikes[userKey] === true;
+          } else {
+            result.isLiked = false;
+            result.isDisliked = false;
+          }
+
+          // Clean up maps from response
+          delete result.likes;
+          delete result.dislikes;
+
+          return result;
+        })
+      );
+
+      postsWithUrls.push(...batchResults);
+    }
+
+    res.status(200).json({
+      data: postsWithUrls,
+      pagination: {
+        page,
+        limit,
+        hasNext: posts.length === limit,
       },
-      {
-        $sort: {
-          engagementScore: -1,
-          createdAt: -1,
-        },
-      },
-      {
-        $limit: limit,
-      },
-    ]);
-
-    const postsWithUrls = await Promise.all(
-      posts.map(async (post) => {
-        const postId = post._id?.toString();
-        const authorId = post.author_id?.toString();
-
-        let imageUrl = null;
-        let videoUrl = null;
-
-        if (post.image) {
-          imageUrl = await getObjectSignedUrl(
-            `post-image-${postId}-${authorId}`
-          );
-        }
-        if (post.video) {
-          videoUrl = await getObjectSignedUrl(
-            `post-video-${postId}-${authorId}`
-          );
-        }
-
-        return {
-          ...post,
-          imageUrl,
-          videoUrl,
-        };
-      })
-    );
-
-    res.status(200).json({ data: postsWithUrls });
+    });
   } catch (error) {
     console.log("error in getPosts controller", error);
     res.status(500).json({ error: "internal server error" });
   }
 };
-
 export const getTrendingPosts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -264,102 +320,183 @@ export const getTrendingPosts = async (req, res) => {
 export const like = async (req, res) => {
   try {
     const { postid, stance } = req.body;
+    const userId = req.user._id.toString();
 
-    const userId = req.user._id;
-    if (postid && userId && stance) {
-      const post = await Post.findById(postid);
+    console.log("=== LIKE CONTROLLER DEBUG ===");
+    console.log("User ID:", userId);
+    console.log("Post ID:", postid);
+    console.log("Stance:", stance);
 
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
+    if (!postid || !userId || !stance) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
-      const userObjectId = new mongoose.Types.ObjectId(userId);
+    if (!["like", "dislike"].includes(stance)) {
+      return res
+        .status(400)
+        .json({ error: "Stance must be 'like' or 'dislike'" });
+    }
 
-      if (stance !== "like" && stance !== "dislike") {
-        return res
-          .status(400)
-          .json({ error: "Invalid stance. Must be 'like' or 'dislike'" });
-      }
+    // Fetch current post (lean for performance)
+    const post = await Post.findById(postid, {
+      likes: 1,
+      dislikes: 1,
+      likes_count: 1,
+      dislikes_count: 1,
+      comments_count: 1,
+      author_id: 1,
+    }).lean();
 
-      // Check if user already liked the post
-      const alreadyLiked = post.likes.includes(userObjectId);
-      // Check if user already disliked the post
-      const alreadyDisliked = post.dislikes.includes(userObjectId);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
 
-      // Handle like stance
-      if (stance === "like") {
-        if (alreadyLiked) {
-          // User already liked, so unlike
-          await Post.findByIdAndUpdate(postid, {
-            $pull: { likes: userObjectId },
-            $inc: { likes_count: -1 },
-          });
+    console.log("Current post likes:", post.likes);
+    console.log("Current post dislikes:", post.dislikes);
+    console.log("Current likes_count:", post.likes_count);
+    console.log("Current dislikes_count:", post.dislikes_count);
 
-          // Remove like points from post author
-          const postAuthor = await User.findById(post.author_id);
+    // Convert stored plain objects to Maps
+    const currentLikes = new Map(Object.entries(post.likes || {}));
+    const currentDislikes = new Map(Object.entries(post.dislikes || {}));
+    const wasLiked = currentLikes.has(userId);
+    const wasDisliked = currentDislikes.has(userId);
 
-          return res.status(200).json({ message: "Post unliked successfully" });
-        } else {
-          // Remove from dislikes if present
-          if (alreadyDisliked) {
-            await Post.findByIdAndUpdate(postid, {
-              $pull: { dislikes: userObjectId },
-              $inc: { dislikes_count: -1 },
-            });
-          }
+    console.log("User previously liked:", wasLiked);
+    console.log("User previously disliked:", wasDisliked);
+    console.log("Action being performed:", stance);
 
-          // Add to likes
-          await Post.findByIdAndUpdate(postid, {
-            $addToSet: { likes: userObjectId },
-            $inc: { likes_count: 1 },
-          });
+    // New Maps for updates
+    const newLikes = new Map(currentLikes);
+    const newDislikes = new Map(currentDislikes);
 
-          // Award points to post author for receiving a like
-          const postAuthor = await User.findById(post.author_id);
+    let likesCountDelta = 0;
+    let dislikesCountDelta = 0;
+    let pointsDelta = 0;
 
-          return res.status(200).json({ message: "Post liked successfully" });
-        }
-      }
-
-      // Handle dislike stance
-      if (stance === "dislike") {
-        if (alreadyDisliked) {
-          // User already disliked, so remove dislike
-          await Post.findByIdAndUpdate(postid, {
-            $pull: { dislikes: userObjectId },
-            $inc: { dislikes_count: -1 },
-          });
-          return res
-            .status(200)
-            .json({ message: "Dislike removed successfully" });
-        } else {
-          // Remove from likes if present
-          if (alreadyLiked) {
-            await Post.findByIdAndUpdate(postid, {
-              $pull: { likes: userObjectId },
-              $inc: { likes_count: -1 },
-            });
-
-            // Remove like points from post author
-            const postAuthor = await User.findById(post.author_id);
-          }
-
-          // Add to dislikes
-          await Post.findByIdAndUpdate(postid, {
-            $addToSet: { dislikes: userObjectId },
-            $inc: { dislikes_count: 1 },
-          });
-          return res
-            .status(200)
-            .json({ message: "Post disliked successfully" });
+    if (stance === "like") {
+      if (wasLiked) {
+        // User is removing their like
+        newLikes.delete(userId);
+        likesCountDelta = -1;
+        pointsDelta = -0.1;
+        console.log("Action: Removing like");
+      } else {
+        // User is adding like
+        newLikes.set(userId, true);
+        likesCountDelta = 1;
+        pointsDelta = 0.1;
+        console.log("Action: Adding like");
+        if (wasDisliked) {
+          // Also remove dislike
+          newDislikes.delete(userId);
+          dislikesCountDelta = -1;
+          pointsDelta = 0.2;
+          console.log("Action: Also removing existing dislike");
         }
       }
     } else {
-      return res.status(404).json({ error: "not all fields" });
+      // Dislike case
+      if (wasDisliked) {
+        // User is removing their dislike
+        newDislikes.delete(userId);
+        dislikesCountDelta = -1;
+        pointsDelta = 0.1;
+        console.log("Action: Removing dislike");
+      } else {
+        // User is adding dislike
+        newDislikes.set(userId, true);
+        dislikesCountDelta = 1;
+        pointsDelta = -0.1;
+        console.log("Action: Adding dislike");
+        if (wasLiked) {
+          // Also remove like
+          newLikes.delete(userId);
+          likesCountDelta = -1;
+          pointsDelta = -0.2;
+          console.log("Action: Also removing existing like");
+        }
+      }
     }
+
+    // Recalculate
+    const updatedLikesCount = post.likes_count + likesCountDelta;
+    const updatedDislikesCount = post.dislikes_count + dislikesCountDelta;
+    const updatedEngagementScore =
+      updatedLikesCount * 1.5 +
+      post.comments_count * 2 -
+      updatedDislikesCount * 0.5;
+
+    console.log(
+      "Deltas - Likes:",
+      likesCountDelta,
+      "Dislikes:",
+      dislikesCountDelta
+    );
+    console.log(
+      "New counts - Likes:",
+      updatedLikesCount,
+      "Dislikes:",
+      updatedDislikesCount
+    );
+
+    // Update in DB
+    const update = await Post.findByIdAndUpdate(
+      postid,
+      {
+        $set: {
+          likes: Object.fromEntries(newLikes),
+          dislikes: Object.fromEntries(newDislikes),
+          likes_count: updatedLikesCount,
+          dislikes_count: updatedDislikesCount,
+          engagement_score: updatedEngagementScore,
+        },
+      },
+      {
+        new: true,
+        select: "likes dislikes likes_count dislikes_count author_id",
+      }
+    );
+
+    if (!update) {
+      return res.status(404).json({ error: "Post not found after update" });
+    }
+
+    // Async user point update
+    if (pointsDelta !== 0) {
+      User.updateOne(
+        { _id: post.author_id },
+        { $inc: { total_debate_points: pointsDelta } }
+      ).catch((err) => console.error("Error updating user points:", err));
+    }
+
+    const isLiked = !!update.likes?.[userId];
+    const isDisliked = !!update.dislikes?.[userId];
+
+    console.log("Final state - isLiked:", isLiked, "isDisliked:", isDisliked);
+
+    const message =
+      stance === "like"
+        ? isLiked
+          ? "Post liked"
+          : "Post unliked"
+        : isDisliked
+        ? "Post disliked"
+        : "Dislike removed";
+
+    console.log("Response message:", message);
+    console.log("=== END DEBUG ===");
+
+    return res.status(200).json({
+      message,
+      likes_count: update.likes_count,
+      dislikes_count: update.dislikes_count,
+      isLiked,
+      isDisliked,
+    });
   } catch (error) {
-    console.error("Error in like controller", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error in like controller:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 

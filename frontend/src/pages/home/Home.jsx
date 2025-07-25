@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { HomeIcon, Search, Cloud, User } from "lucide-react";
 import useGetAllPosts from "../../hooks/useGetPosts";
-import Post from "./Post";
+import Post from "./Post.jsx";
 import Footernav from "../../../components/Footernav";
 import Topbar from "../../../components/Topbar";
 
@@ -12,6 +12,7 @@ export default function Home() {
   useEffect(() => {
     getPosts();
   }, [getPosts]);
+  console.log(posts[0]);
 
   return (
     <>
@@ -49,14 +50,14 @@ export default function Home() {
                     title={post.title}
                     id={post._id}
                     text={post.text}
-                    likes={post.likes_count}
-                    likesUsername={post.likes}
-                    dislikesUsername={post.dislikes}
-                    comments={post.comments_count}
-                    dislikes={post.dislikes_count}
+                    likes_count={post.likes_count}
+                    comments_count={post.comments_count}
+                    dislikes_count={post.dislikes_count}
                     categories={post.categories}
                     imageUrl={post.imageUrl}
                     videoUrl={post.videoUrl}
+                    isLiked={post.isLiked}
+                    isDisliked={post.isDisliked}
                   />
                 ))
               )}

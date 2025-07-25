@@ -8,7 +8,6 @@ export const getPostComment = async (req, res) => {
       throw new Error("no POst id");
     }
     const isthere = await Reply.findOne({ postid: postid });
-    // console.log(isthere);
     if (isthere) {
       Reply.find({ postid: postid }).then((data) => {
         res.status(201).json(data);

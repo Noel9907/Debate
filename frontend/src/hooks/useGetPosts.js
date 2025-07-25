@@ -37,7 +37,6 @@ const useGetAllPosts = () => {
       }
 
       setPosts(data.data);
-      console.log(data.data);
       return data.data;
     } catch (error) {
       // Only show toast for errors that aren't aborts
@@ -88,7 +87,6 @@ export const useGetTrending = () => {
       }
 
       setPosts(data.data);
-      console.log(data.data);
       return data.data;
     } catch (error) {
       // Only show toast for errors that aren't aborts
@@ -131,7 +129,6 @@ export const useGetPost = () => {
       if (data.error) throw new Error(data.error);
 
       const postData = data[0] || {};
-      console.log(postData);
       setPost(postData);
       return postData;
     } catch (error) {

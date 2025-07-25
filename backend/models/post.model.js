@@ -10,32 +10,37 @@ const postSchema = new mongoose.Schema(
     },
     image: { type: Boolean, required: true },
     video: { type: Boolean, required: true },
-
     author_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true,
     },
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    dislikes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+    // Replace arrays with Maps for O(1) lookups and automatic deduplication
+    likes: {
+      type: Map,
+      of: Boolean,
+      default: new Map(),
+    },
+    dislikes: {
+      type: Map,
+      of: Boolean,
+      default: new Map(),
+    },
     likes_count: {
       type: Number,
       default: 0,
+      index: true, // For sorting by popularity
     },
     dislikes_count: {
       type: Number,
       default: 0,
+    },
+    // Denormalized engagement score for efficient sorting
+    engagement_score: {
+      type: Number,
+      default: 0,
+      index: true,
     },
     title: {
       type: String,
@@ -59,117 +64,88 @@ const postSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        // Convert Maps to arrays for JSON response compatibility
+        if (ret.likes instanceof Map) {
+          ret.likes = Array.from(ret.likes.keys()).map(
+            (id) => new mongoose.Types.ObjectId(id)
+          );
+        }
+        if (ret.dislikes instanceof Map) {
+          ret.dislikes = Array.from(ret.dislikes.keys()).map(
+            (id) => new mongoose.Types.ObjectId(id)
+          );
+        }
+        return ret;
+      },
+    },
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        // Convert Maps to arrays for object compatibility
+        if (ret.likes instanceof Map) {
+          ret.likes = Array.from(ret.likes.keys()).map(
+            (id) => new mongoose.Types.ObjectId(id)
+          );
+        }
+        if (ret.dislikes instanceof Map) {
+          ret.dislikes = Array.from(ret.dislikes.keys()).map(
+            (id) => new mongoose.Types.ObjectId(id)
+          );
+        }
+        return ret;
+      },
+    },
   }
 );
 
-// Virtual for comments
+// Optimized compound indexes for common queries
+postSchema.index({ categories: 1, engagement_score: -1 });
+postSchema.index({ author_id: 1, createdAt: -1 });
+postSchema.index({ likes_count: -1, createdAt: -1 });
+postSchema.index({ engagement_score: -1, createdAt: -1 });
+
+// Virtual for comments (unchanged)
 postSchema.virtual("comments", {
   ref: "Comment",
   localField: "_id",
   foreignField: "postid",
 });
 
-// Compound index
-postSchema.index({ categories: 1, createdAt: -1 });
-postSchema.methods.toggleLike = async function (userId) {
-  const userIdObj = new mongoose.Types.ObjectId(userId);
-
-  // Refetch updated likes/dislikes
-  const post = await this.constructor
-    .findById(this._id)
-    .select("likes dislikes");
-
-  let isLiked = false;
-
-  const alreadyLiked = post.likes.some((id) => id.equals(userIdObj));
-  const alreadyDisliked = post.dislikes.some((id) => id.equals(userIdObj));
-
-  if (alreadyLiked) {
-    // Remove like
-    await this.updateOne({
-      $pull: { likes: userIdObj },
-      $inc: { likes_count: -1 },
-    });
-
-    await User.findByIdAndUpdate(this.author_id, {
-      $inc: { total_debate_points: -0.1 },
-    });
-  } else {
-    // Remove dislike if present
-    let pointsToAdd = 0.1;
-    if (alreadyDisliked) {
-      await this.updateOne({
-        $pull: { dislikes: userIdObj },
-        $inc: { dislikes_count: -1 },
-      });
-      pointsToAdd = 0.2;
-    }
-
-    await this.updateOne({
-      $addToSet: { likes: userIdObj },
-      $inc: { likes_count: 1 },
-    });
-
-    await User.findByIdAndUpdate(this.author_id, {
-      $inc: { total_debate_points: pointsToAdd },
-    });
-
-    isLiked = true;
-  }
-
-  return isLiked;
+// Helper method to calculate engagement score
+postSchema.methods.calculateEngagementScore = function () {
+  return (
+    this.likes_count * 1.5 + this.comments_count * 2 - this.dislikes_count * 0.5
+  );
 };
 
-postSchema.methods.toggleDislike = async function (userId) {
-  const userIdObj = new mongoose.Types.ObjectId(userId);
-  const User = mongoose.model("User");
+// Helper method to check if user liked the post
+postSchema.methods.isLikedBy = function (userId) {
+  return this.likes.get(userId.toString()) === true;
+};
 
-  // Refetch updated likes/dislikes
-  const post = await this.constructor
-    .findById(this._id)
-    .select("likes dislikes");
+// Helper method to check if user disliked the post
+postSchema.methods.isDislikedBy = function (userId) {
+  return this.dislikes.get(userId.toString()) === true;
+};
 
-  let isDisliked = false;
-
-  const alreadyDisliked = post.dislikes.some((id) => id.equals(userIdObj));
-  const alreadyLiked = post.likes.some((id) => id.equals(userIdObj));
-
-  if (alreadyDisliked) {
-    // Remove dislike
-    await this.updateOne({
-      $pull: { dislikes: userIdObj },
-      $inc: { dislikes_count: -1 },
-    });
-
-    await User.findByIdAndUpdate(this.author_id, {
-      $inc: { total_debate_points: 0.1 },
-    });
-  } else {
-    // Remove like if present
-    let pointsToRemove = -0.1;
-    if (alreadyLiked) {
-      await this.updateOne({
-        $pull: { likes: userIdObj },
-        $inc: { likes_count: -1 },
-      });
-      pointsToRemove = -0.2;
-    }
-
-    await this.updateOne({
-      $addToSet: { dislikes: userIdObj },
-      $inc: { dislikes_count: 1 },
-    });
-
-    await User.findByIdAndUpdate(this.author_id, {
-      $inc: { total_debate_points: pointsToRemove },
-    });
-
-    isDisliked = true;
-  }
-
-  return isDisliked;
+// Static method for efficient bulk operations
+postSchema.statics.updateEngagementScores = async function (postIds) {
+  return this.updateMany({ _id: { $in: postIds } }, [
+    {
+      $set: {
+        engagement_score: {
+          $add: [
+            { $multiply: ["$likes_count", 1.5] },
+            { $multiply: ["$comments_count", 2] },
+            { $multiply: ["$dislikes_count", -0.5] },
+          ],
+        },
+      },
+    },
+  ]);
 };
 
 const Post = mongoose.model("DebatePost", postSchema);

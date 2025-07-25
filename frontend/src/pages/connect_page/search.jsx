@@ -238,8 +238,6 @@ export default function SearchPage() {
                   id={post._id}
                   text={post.text}
                   likes={post.likes_count}
-                  likesUsername={post.likes}
-                  dislikesUsername={post.dislikes}
                   comments={post.comments_count}
                   dislikes={post.dislikes_count}
                   categories={post.categories}

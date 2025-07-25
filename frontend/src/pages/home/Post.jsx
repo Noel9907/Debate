@@ -11,78 +11,112 @@ import {
   Facebook,
   Twitter,
   Linkedin,
-  X,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import useLikes from "../../hooks/useLikes";
-import { useGetPost } from "../../hooks/useGetPosts";
-import { set } from "mongoose";
+import useLikes from "../../hooks/useLikes.js";
 
 export default function Posts({
   username,
-  likes,
-  likesUsername,
-  dislikesUsername,
+  likes_count,
+  dislikes_count,
+  comments_count,
   categories,
   createdAt,
-  dislikes,
   id,
-  comments,
   text,
   title,
   imageUrl,
   videoUrl,
+  isLiked,
+  isDisliked,
 }) {
-  const postid = id;
-  const CurrentUser = JSON.parse(localStorage.getItem("duser"))._id;
+  console.log(isLiked);
+  const getCurrentUser = () => {
+    try {
+      const userData = localStorage.getItem("duser");
+      if (!userData) return null;
+      const parsed = JSON.parse(userData);
+      return parsed?._id || null;
+    } catch (error) {
+      console.error("Error parsing user data from localStorage:", error);
+      return null;
+    }
+  };
+
+  const CurrentUser = getCurrentUser();
   const { handleLike, likeLoading } = useLikes();
-  const { getPost, PostLoading, post } = useGetPost();
-  const [upvotes, setUpvotes] = useState(likes || 0);
-  const [downvotes, setDownvotes] = useState(dislikes || 0);
-  const [userVote, setUserVote] = useState(null);
+
   // Share functionality state
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareMenuRef = useRef(null);
 
+  // Local state for votes - initialize with props
+  // TEMPORARY: If props are undefined, try to sync with backend on first render
+  const [upvotes, setUpvotes] = useState(likes_count ?? 0);
+  const [downvotes, setDownvotes] = useState(dislikes_count ?? 0);
+  const [userVote, setUserVote] = useState(
+    isLiked ? "up" : isDisliked ? "down" : null
+  );
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
+
+  // Effect to update local state when initial props change
+  useEffect(() => {
+    // If props are defined, use them
+    if (likes_count !== undefined && dislikes_count !== undefined) {
+      setUpvotes(likes_count);
+      setDownvotes(dislikes_count);
+      setUserVote(isLiked ? "up" : isDisliked ? "down" : null);
+      setInitialSyncDone(true);
+    }
+    // If props are undefined but we haven't synced yet, we need to fetch current state
+    else if (!initialSyncDone && CurrentUser && id) {
+      console.log(
+        "Props are undefined, this suggests a data fetching issue in parent component"
+      );
+      // The real fix should be in your parent component that fetches posts
+      setInitialSyncDone(true);
+    }
+  }, [
+    likes_count,
+    dislikes_count,
+    isLiked,
+    isDisliked,
+    initialSyncDone,
+    CurrentUser,
+    id,
+  ]);
+
   // Process images - handle string, array, or null/undefined
   const processImages = (imageData) => {
     if (!imageData) return [];
-
-    if (typeof imageData === "string") {
-      // If it's a single string, check if it's a comma-separated list
-      const urls = imageData
-        .split(",")
-        .map((url) => url.trim())
-        .filter((url) => url);
-      return urls;
+    try {
+      if (typeof imageData === "string") {
+        const urls = imageData
+          .split(",")
+          .map((url) => url.trim())
+          .filter((url) => url && url.length > 0);
+        return urls;
+      }
+      if (Array.isArray(imageData)) {
+        return imageData.filter(
+          (url) => url && typeof url === "string" && url.trim().length > 0
+        );
+      }
+    } catch (error) {
+      console.error("Error processing images:", error);
     }
-
-    if (Array.isArray(imageData)) {
-      return imageData.filter((url) => url && url.trim());
-    }
-
     return [];
   };
 
-  const images = processImages(imageUrl).slice(0, 3); // Limit to 3 images max
+  const images = processImages(imageUrl).slice(0, 3);
 
-  // Calculate net votes
+  // Calculate net votes safely
   const netVotes = upvotes - downvotes;
-
-  useEffect(() => {
-    if (Array.isArray(likesUsername) && likesUsername.includes(CurrentUser)) {
-      setUserVote("up");
-    } else if (
-      Array.isArray(dislikesUsername) &&
-      dislikesUsername.includes(CurrentUser)
-    ) {
-      setUserVote("down");
-    }
-  }, [likesUsername, dislikesUsername, CurrentUser]);
 
   // Format large numbers to k, M format
   const formatNumber = (num) => {
+    if (num === null || num === undefined || isNaN(num)) return "0";
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
     }
@@ -92,7 +126,7 @@ export default function Posts({
     if (num >= 1000) {
       return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     }
-    return num;
+    return num.toString();
   };
 
   // Get grid layout class based on number of images
@@ -103,7 +137,7 @@ export default function Posts({
       case 2:
         return "grid-cols-2";
       case 3:
-        return "grid-cols-2"; // 2 on top, 1 on bottom
+        return "grid-cols-2"; // Two small, one large
       default:
         return "grid-cols-1";
     }
@@ -112,100 +146,138 @@ export default function Posts({
   // Get individual image class based on count and index
   const getImageClass = (imageCount, index) => {
     if (imageCount === 3 && index === 2) {
-      return "col-span-2"; // Third image spans full width
+      return "col-span-2"; // The third image spans two columns
     }
     return "";
   };
 
-  const handleUpvote = async (e) => {
+  const handleVote = async (e, voteType) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!CurrentUser) {
-      alert("You need to be logged in to vote");
+      console.error("You need to be logged in to vote.");
       return;
     }
 
-    // Don't allow actions while already loading
     if (likeLoading) {
-      return;
+      return; // Prevent multiple requests
     }
+
+    // Store current state for potential rollback
+    const currentUpvotes = upvotes;
+    const currentDownvotes = downvotes;
+    const currentUserVote = userVote;
+
+    console.log("Before vote:", {
+      currentUpvotes,
+      currentDownvotes,
+      currentUserVote,
+      voteType,
+    });
+
+    // Determine what the new state should be based on current vote and new action
+    let newUpvotes = currentUpvotes;
+    let newDownvotes = currentDownvotes;
+    let newUserVote = currentUserVote;
+
+    if (voteType === "like") {
+      if (currentUserVote === "up") {
+        // User is removing their upvote
+        newUpvotes = Math.max(0, currentUpvotes - 1);
+        newUserVote = null;
+      } else {
+        // User is upvoting (possibly removing downvote)
+        if (currentUserVote === "down") {
+          newDownvotes = Math.max(0, currentDownvotes - 1);
+        }
+        newUpvotes = currentUpvotes + 1;
+        newUserVote = "up";
+      }
+    } else {
+      // dislike
+      if (currentUserVote === "down") {
+        // User is removing their downvote
+        newDownvotes = Math.max(0, currentDownvotes - 1);
+        newUserVote = null;
+      } else {
+        // User is downvoting (possibly removing upvote)
+        if (currentUserVote === "up") {
+          newUpvotes = Math.max(0, currentUpvotes - 1);
+        }
+        newDownvotes = currentDownvotes + 1;
+        newUserVote = "down";
+      }
+    }
+
+    // Apply optimistic update
+    setUpvotes(newUpvotes);
+    setDownvotes(newDownvotes);
+    setUserVote(newUserVote);
+
+    console.log("Optimistic update:", {
+      newUpvotes,
+      newDownvotes,
+      newUserVote,
+    });
 
     try {
-      // Call API first without optimistic updates
-      await handleLike({
-        postid: postid,
-        user: CurrentUser,
-        stance: "like",
+      const result = await handleLike({
+        postid: id,
+        stance: voteType,
       });
-      if (userVote == "up") {
-        setUserVote(null);
-        setUpvotes(likes ? likes - 1 : 0);
-      } else {
-        setUserVote("up");
-        setUpvotes(likesUsername.includes(CurrentUser) ? likes : likes + 1);
-      }
 
-      // After successful API call, fetch the updated post
-      getPost(postid);
+      if (
+        result &&
+        result.likes_count !== undefined &&
+        result.dislikes_count !== undefined
+      ) {
+        // Update state with actual backend response
+        console.log("Backend response:", result);
+        setUpvotes(result.likes_count);
+        setDownvotes(result.dislikes_count);
+        setUserVote(result.isLiked ? "up" : result.isDisliked ? "down" : null);
+        console.log("Updated to backend state:", {
+          upvotes: result.likes_count,
+          downvotes: result.dislikes_count,
+          userVote: result.isLiked ? "up" : result.isDisliked ? "down" : null,
+        });
+      } else {
+        // API call failed, rollback optimistic update
+        console.error("API call failed, rolling back optimistic update");
+        setUpvotes(currentUpvotes);
+        setDownvotes(currentDownvotes);
+        setUserVote(currentUserVote);
+      }
     } catch (error) {
-      console.error("Error handling upvote:", error);
+      console.error("Error handling vote:", error);
+      // Rollback optimistic update on error
+      setUpvotes(currentUpvotes);
+      setDownvotes(currentDownvotes);
+      setUserVote(currentUserVote);
     }
   };
 
-  const handleDownvote = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleUpvote = (e) => handleVote(e, "like");
+  const handleDownvote = (e) => handleVote(e, "dislike");
 
-    if (!CurrentUser) {
-      alert("You need to be logged in to vote");
-      return;
-    }
-
-    // Don't allow actions while already loading
-    if (likeLoading) {
-      return;
-    }
-
-    try {
-      // Call API first without optimistic updates
-      await handleLike({
-        postid: postid,
-        user: CurrentUser,
-        stance: "dislike",
-      });
-
-      if (userVote == "down") {
-        setUserVote(null);
-        setDownvotes(dislikes ? dislikes - 1 : 0);
-      } else {
-        setUserVote("down");
-        setDownvotes(
-          dislikesUsername.includes(CurrentUser) ? dislikes : dislikes + 1
-        );
-      }
-
-      // After successful API call, fetch the updated post
-      getPost(postid);
-    } catch (error) {
-      console.error("Error handling downvote:", error);
-    }
-  };
-
-  // Format date if available
+  // Format date safely
   const formattedDate = createdAt
-    ? new Date(createdAt).toLocaleDateString()
+    ? (() => {
+        try {
+          return new Date(createdAt).toLocaleDateString();
+        } catch (error) {
+          console.error("Error formatting date:", error);
+          return "";
+        }
+      })()
     : "";
 
-  // Calculate reading time (assuming average reading speed of 200 words per minute)
-  const readingTime = text
-    ? Math.max(1, Math.ceil(text.split(" ").length / 200))
-    : 1;
-
-  const debate = {
-    participants: 25,
-    comments: 10,
-  };
+  // Calculate reading time safely
+  const readingTime =
+    text && typeof text === "string"
+      ? Math.max(1, Math.ceil(text.split(" ").length / 200))
+      : 1;
 
   // Share menu handlers
   const handleShareButtonClick = (e) => {
@@ -215,18 +287,32 @@ export default function Posts({
     setCopySuccess(false);
   };
 
-  const shareUrl = window.location.origin + `/test/${postid}`;
+  const shareUrl = `${window.location.origin}/test/${id}`;
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl).then(
-      () => {
+  const copyToClipboard = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
-      },
-      (err) => {
-        console.error("Could not copy text: ", err);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 2000);
+        } catch (fallbackErr) {
+          console.error("Fallback copy failed:", fallbackErr);
+        }
+        document.body.removeChild(textArea);
       }
-    );
+    } catch (err) {
+      console.error("Could not copy text: ", err);
+    }
   };
 
   const shareToSocialMedia = (platform) => {
@@ -247,6 +333,7 @@ export default function Posts({
       default:
         return;
     }
+
     window.open(shareLink, "_blank", "width=600,height=400");
     setShowShareMenu(false);
   };
@@ -264,21 +351,33 @@ export default function Posts({
     if (showShareMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showShareMenu]);
 
+  // Early return if essential props are missing
+  if (!id) {
+    return (
+      <div className="p-2 sm:p-3">
+        <div className="bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 border border-gray-700">
+          <p className="text-gray-400">Error: Post ID is required</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-2 sm:p-3 transform hover:scale-100 sm:hover:scale-102 transition-transform duration-200">
       <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500 relative">
         <Link
-          to={`/posts/${postid}`}
+          to={`/posts/${id}`}
           state={{
             id,
             username,
-            likes: upvotes,
-            dislikes: downvotes,
+            likes: upvotes, // Use current state instead of initial props
+            dislikes: downvotes, // Use current state instead of initial props
             categories,
             text,
             title,
@@ -294,6 +393,9 @@ export default function Posts({
                 width={32}
                 height={32}
                 className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 p-0.5"
+                onError={(e) => {
+                  e.target.src = "/placeholder.svg?height=40&width=40";
+                }}
               />
               {netVotes > 50 && (
                 <Award className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 absolute -top-1 -right-1" />
@@ -315,7 +417,7 @@ export default function Posts({
                     • {readingTime} min read
                   </span>
                 )}
-                {categories?.length > 0 && (
+                {categories && categories.length > 0 && (
                   <span className="truncate">
                     •
                     <span className="text-purple-400">
@@ -348,7 +450,7 @@ export default function Posts({
                   )}`}
                 >
                   <img
-                    src={imageurl}
+                    src={imageurl || "/placeholder.svg"}
                     alt={`Post image ${index + 1}`}
                     className="w-full h-48 sm:h-56 object-cover hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
@@ -359,6 +461,7 @@ export default function Posts({
               ))}
             </div>
           )}
+
           {videoUrl && (
             <div className="mb-4 rounded-lg overflow-hidden bg-black">
               <video
@@ -378,7 +481,7 @@ export default function Posts({
           <span className="flex items-center justify-start">
             <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-400" />
             <span className="truncate">
-              {formatNumber(comments + likes + dislikes)}
+              {formatNumber((comments_count || 0) + upvotes + downvotes)}
             </span>
             <span className="hidden sm:inline ml-1">participants</span>
           </span>
@@ -389,7 +492,9 @@ export default function Posts({
           </span>
           <span className="flex items-center justify-end">
             <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-purple-400" />
-            <span className="truncate">{formatNumber(comments)}</span>
+            <span className="truncate">
+              {formatNumber(comments_count || 0)}
+            </span>
             <span className="hidden sm:inline ml-1">comments</span>
           </span>
         </div>
@@ -399,7 +504,8 @@ export default function Posts({
           <div className="flex gap-1 sm:gap-2">
             <button
               onClick={handleUpvote}
-              className={`flex items-center px-0 py-1 rounded-md hover:bg-gray-700 transition-colors ${
+              disabled={likeLoading}
+              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 ${
                 userVote === "up"
                   ? "text-green-400"
                   : "text-gray-400 hover:text-white"
@@ -417,7 +523,8 @@ export default function Posts({
             </button>
             <button
               onClick={handleDownvote}
-              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors ${
+              disabled={likeLoading}
+              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 ${
                 userVote === "down"
                   ? "text-red-400"
                   : "text-gray-400 hover:text-white"
@@ -443,6 +550,7 @@ export default function Posts({
               <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="text-xs sm:text-sm">Share</span>
             </button>
+
             {/* Share Menu Dropdown */}
             {showShareMenu && (
               <div
@@ -482,7 +590,7 @@ export default function Posts({
           </div>
         </div>
 
-        {/* Vote breakdown tooltip - shows on hover */}
+        {/* Vote breakdown tooltip */}
         {(upvotes > 0 || downvotes > 0) && (
           <div className="mt-3 text-xs text-gray-500">
             {formatNumber(upvotes)} upvotes • {formatNumber(downvotes)}{" "}
