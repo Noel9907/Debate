@@ -12,7 +12,7 @@ import {
   Twitter,
   Linkedin,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import useLikes from "../../hooks/useLikes.js";
 
 export default function Posts({
@@ -30,7 +30,6 @@ export default function Posts({
   isLiked,
   isDisliked,
 }) {
-  console.log(isLiked);
   const getCurrentUser = () => {
     try {
       const userData = localStorage.getItem("duser");
@@ -51,8 +50,6 @@ export default function Posts({
   const [copySuccess, setCopySuccess] = useState(false);
   const shareMenuRef = useRef(null);
 
-  // Local state for votes - initialize with props
-  // TEMPORARY: If props are undefined, try to sync with backend on first render
   const [upvotes, setUpvotes] = useState(likes_count ?? 0);
   const [downvotes, setDownvotes] = useState(dislikes_count ?? 0);
   const [userVote, setUserVote] = useState(
@@ -60,21 +57,20 @@ export default function Posts({
   );
   const [initialSyncDone, setInitialSyncDone] = useState(false);
 
+  // Force re-render state
+  const [renderKey, setRenderKey] = useState(0);
+
   // Effect to update local state when initial props change
   useEffect(() => {
-    // If props are defined, use them
     if (likes_count !== undefined && dislikes_count !== undefined) {
       setUpvotes(likes_count);
       setDownvotes(dislikes_count);
       setUserVote(isLiked ? "up" : isDisliked ? "down" : null);
       setInitialSyncDone(true);
-    }
-    // If props are undefined but we haven't synced yet, we need to fetch current state
-    else if (!initialSyncDone && CurrentUser && id) {
+    } else if (!initialSyncDone && CurrentUser && id) {
       console.log(
         "Props are undefined, this suggests a data fetching issue in parent component"
       );
-      // The real fix should be in your parent component that fetches posts
       setInitialSyncDone(true);
     }
   }, [
@@ -137,7 +133,7 @@ export default function Posts({
       case 2:
         return "grid-cols-2";
       case 3:
-        return "grid-cols-2"; // Two small, one large
+        return "grid-cols-2";
       default:
         return "grid-cols-1";
     }
@@ -146,10 +142,21 @@ export default function Posts({
   // Get individual image class based on count and index
   const getImageClass = (imageCount, index) => {
     if (imageCount === 3 && index === 2) {
-      return "col-span-2"; // The third image spans two columns
+      return "col-span-2";
     }
     return "";
   };
+
+  // Memoized function to update state
+  const updateVoteState = useCallback(
+    (newUpvotes, newDownvotes, newUserVote) => {
+      setUpvotes(newUpvotes);
+      setDownvotes(newDownvotes);
+      setUserVote(newUserVote);
+      setRenderKey((prev) => prev + 1); // Force re-render
+    },
+    []
+  );
 
   const handleVote = async (e, voteType) => {
     e.preventDefault();
@@ -161,7 +168,7 @@ export default function Posts({
     }
 
     if (likeLoading) {
-      return; // Prevent multiple requests
+      return;
     }
 
     // Store current state for potential rollback
@@ -169,14 +176,7 @@ export default function Posts({
     const currentDownvotes = downvotes;
     const currentUserVote = userVote;
 
-    console.log("Before vote:", {
-      currentUpvotes,
-      currentDownvotes,
-      currentUserVote,
-      voteType,
-    });
-
-    // Determine what the new state should be based on current vote and new action
+    // Calculate new state for optimistic update
     let newUpvotes = currentUpvotes;
     let newDownvotes = currentDownvotes;
     let newUserVote = currentUserVote;
@@ -210,52 +210,45 @@ export default function Posts({
       }
     }
 
-    // Apply optimistic update
-    setUpvotes(newUpvotes);
-    setDownvotes(newDownvotes);
-    setUserVote(newUserVote);
-
-    console.log("Optimistic update:", {
-      newUpvotes,
-      newDownvotes,
-      newUserVote,
-    });
+    updateVoteState(newUpvotes, newDownvotes, newUserVote);
 
     try {
       const result = await handleLike({
         postid: id,
         stance: voteType,
       });
-
+      console.log("resullt++", result);
       if (
         result &&
-        result.likes_count !== undefined &&
-        result.dislikes_count !== undefined
+        result.likes_count !== null &&
+        result.dislikes_count !== null
       ) {
-        // Update state with actual backend response
-        console.log("Backend response:", result);
-        setUpvotes(result.likes_count);
-        setDownvotes(result.dislikes_count);
-        setUserVote(result.isLiked ? "up" : result.isDisliked ? "down" : null);
-        console.log("Updated to backend state:", {
-          upvotes: result.likes_count,
-          downvotes: result.dislikes_count,
-          userVote: result.isLiked ? "up" : result.isDisliked ? "down" : null,
-        });
+        // Set user vote based on backend response
+        let finalUserVote = null;
+        if (result.isLiked === true) {
+          finalUserVote = "up";
+        } else if (result.isDisliked === true) {
+          finalUserVote = "down";
+        }
+        console.log("final" + finalUserVote);
+        updateVoteState(
+          result.likes_count,
+          result.dislikes_count,
+          finalUserVote
+        );
       } else {
-        // API call failed, rollback optimistic update
-        console.error("API call failed, rolling back optimistic update");
-        setUpvotes(currentUpvotes);
-        setDownvotes(currentDownvotes);
-        setUserVote(currentUserVote);
+        console.error(
+          "Invalid backend response, rolling back optimistic update"
+        );
+        // Rollback optimistic update
+        updateVoteState(currentUpvotes, currentDownvotes, currentUserVote);
       }
     } catch (error) {
       console.error("Error handling vote:", error);
       // Rollback optimistic update on error
-      setUpvotes(currentUpvotes);
-      setDownvotes(currentDownvotes);
-      setUserVote(currentUserVote);
+      updateVoteState(currentUpvotes, currentDownvotes, currentUserVote);
     }
+    console.log(currentUserVote);
   };
 
   const handleUpvote = (e) => handleVote(e, "like");
@@ -296,7 +289,6 @@ export default function Posts({
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
       } else {
-        // Fallback for older browsers
         const textArea = document.createElement("textarea");
         textArea.value = shareUrl;
         document.body.appendChild(textArea);
@@ -376,8 +368,8 @@ export default function Posts({
           state={{
             id,
             username,
-            likes: upvotes, // Use current state instead of initial props
-            dislikes: downvotes, // Use current state instead of initial props
+            likes: upvotes,
+            dislikes: downvotes,
             categories,
             text,
             title,
@@ -503,16 +495,23 @@ export default function Posts({
         <div className="flex flex-wrap sm:flex-nowrap justify-between gap-1 sm:gap-2">
           <div className="flex gap-1 sm:gap-2">
             <button
+              key={`upvote-${renderKey}`} // Force re-render with key
               onClick={handleUpvote}
               disabled={likeLoading}
-              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 ${
+              className={`flex items-center px-2 py-1 rounded-md transition-all duration-200 disabled:opacity-50 ${
                 userVote === "up"
-                  ? "text-green-400"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-green-400 bg-green-400/20 border border-green-400/30"
+                  : "text-gray-400 hover:text-white hover:bg-gray-700"
               }`}
+              style={{
+                // Inline styles to ensure they override any cached styles
+                color: userVote === "up" ? "#4ade80" : "#9ca3af",
+                backgroundColor:
+                  userVote === "up" ? "rgba(74, 222, 128, 0.2)" : "transparent",
+              }}
             >
               <ThumbsUp
-                className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${
+                className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 transition-all duration-200 ${
                   userVote === "up" ? "fill-current" : ""
                 }`}
               />
@@ -522,16 +521,25 @@ export default function Posts({
               </span>
             </button>
             <button
+              key={`downvote-${renderKey}`} // Force re-render with key
               onClick={handleDownvote}
               disabled={likeLoading}
-              className={`flex items-center px-2 py-1 rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50 ${
+              className={`flex items-center px-2 py-1 rounded-md transition-all duration-200 disabled:opacity-50 ${
                 userVote === "down"
-                  ? "text-red-400"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-red-400 bg-red-400/20 border border-red-400/30"
+                  : "text-gray-400 hover:text-white hover:bg-gray-700"
               }`}
+              style={{
+                // Inline styles to ensure they override any cached styles
+                color: userVote === "down" ? "#f87171" : "#9ca3af",
+                backgroundColor:
+                  userVote === "down"
+                    ? "rgba(248, 113, 113, 0.2)"
+                    : "transparent",
+              }}
             >
               <ThumbsDown
-                className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${
+                className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 transition-all duration-200 ${
                   userVote === "down" ? "fill-current" : ""
                 }`}
               />

@@ -12,7 +12,6 @@ export default function Home() {
   useEffect(() => {
     getPosts();
   }, [getPosts]);
-  console.log(posts[0]);
 
   return (
     <>

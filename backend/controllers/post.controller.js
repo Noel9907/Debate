@@ -120,8 +120,7 @@ export const getPosts = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Cap at 100
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const skip = (page - 1) * limit;
-    const userId = req.user?._id?.toString(); // Ensure string format
-
+    const userId = req.user?._id?.toString();
     // Fetch posts with required fields
     const posts = await Post.find(
       {},
@@ -189,8 +188,7 @@ export const getPosts = async (req, res) => {
           result.videoUrl = post.video
             ? urls.find((u) => u.type === "video")?.url || null
             : null;
-
-          // Check like/dislike status
+          console.log(userId);
           if (userId) {
             const userKey = userId.toString();
 
@@ -322,11 +320,6 @@ export const like = async (req, res) => {
     const { postid, stance } = req.body;
     const userId = req.user._id.toString();
 
-    console.log("=== LIKE CONTROLLER DEBUG ===");
-    console.log("User ID:", userId);
-    console.log("Post ID:", postid);
-    console.log("Stance:", stance);
-
     if (!postid || !userId || !stance) {
       return res.status(400).json({ error: "Missing required fields" });
     }
@@ -351,25 +344,15 @@ export const like = async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    console.log("Current post likes:", post.likes);
-    console.log("Current post dislikes:", post.dislikes);
-    console.log("Current likes_count:", post.likes_count);
-    console.log("Current dislikes_count:", post.dislikes_count);
-
     // Convert stored plain objects to Maps
     const currentLikes = new Map(Object.entries(post.likes || {}));
     const currentDislikes = new Map(Object.entries(post.dislikes || {}));
     const wasLiked = currentLikes.has(userId);
     const wasDisliked = currentDislikes.has(userId);
 
-    console.log("User previously liked:", wasLiked);
-    console.log("User previously disliked:", wasDisliked);
-    console.log("Action being performed:", stance);
-
     // New Maps for updates
     const newLikes = new Map(currentLikes);
     const newDislikes = new Map(currentDislikes);
-
     let likesCountDelta = 0;
     let dislikesCountDelta = 0;
     let pointsDelta = 0;
@@ -440,13 +423,17 @@ export const like = async (req, res) => {
       updatedDislikesCount
     );
 
+    // Convert Maps back to objects for database storage
+    const likesObject = Object.fromEntries(newLikes);
+    const dislikesObject = Object.fromEntries(newDislikes);
+
     // Update in DB
     const update = await Post.findByIdAndUpdate(
       postid,
       {
         $set: {
-          likes: Object.fromEntries(newLikes),
-          dislikes: Object.fromEntries(newDislikes),
+          likes: likesObject,
+          dislikes: dislikesObject,
           likes_count: updatedLikesCount,
           dislikes_count: updatedDislikesCount,
           engagement_score: updatedEngagementScore,
@@ -470,10 +457,14 @@ export const like = async (req, res) => {
       ).catch((err) => console.error("Error updating user points:", err));
     }
 
-    const isLiked = !!update.likes?.[userId];
-    const isDisliked = !!update.dislikes?.[userId];
+    // FIX: Use the Maps we created instead of the database object
+    const isLiked = newLikes.has(userId);
+    const isDisliked = newDislikes.has(userId);
 
     console.log("Final state - isLiked:", isLiked, "isDisliked:", isDisliked);
+    console.log("newLikes has userId:", newLikes.has(userId));
+    console.log("newDislikes has userId:", newDislikes.has(userId));
+    console.log("userId:", userId);
 
     const message =
       stance === "like"

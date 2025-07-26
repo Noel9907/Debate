@@ -24,6 +24,7 @@ const useGetAllPosts = () => {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
+          credentials: "include",
         }
       );
 
