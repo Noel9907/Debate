@@ -1,3 +1,5 @@
+"use client";
+
 import { Link } from "react-router-dom";
 import {
   Users,
@@ -6,7 +8,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Share2,
-  Award,
   Copy,
   Facebook,
   Twitter,
@@ -16,9 +17,7 @@ import { useState, useRef, useEffect, useCallback, memo } from "react";
 import useLikes from "../../hooks/useLikes.js";
 
 // Constants
-const READING_WORDS_PER_MINUTE = 200;
 const MAX_IMAGES_DISPLAY = 3;
-const VOTE_THRESHOLD_FOR_AWARD = 50;
 const SHARE_POPUP_DIMENSIONS = "width=600,height=400";
 
 // Utility functions
@@ -57,14 +56,6 @@ const formatDate = (dateString) => {
   }
 };
 
-const calculateReadingTime = (text) => {
-  if (!text || typeof text !== "string") return 1;
-  return Math.max(
-    1,
-    Math.ceil(text.split(" ").length / READING_WORDS_PER_MINUTE)
-  );
-};
-
 const processImages = (imageData) => {
   if (!imageData) return [];
 
@@ -89,26 +80,6 @@ const processImages = (imageData) => {
   }
 
   return [];
-};
-
-const getImageGridClass = (imageCount) => {
-  switch (imageCount) {
-    case 1:
-      return "grid-cols-1";
-    case 2:
-      return "grid-cols-2";
-    case 3:
-      return "grid-cols-2";
-    default:
-      return "grid-cols-1";
-  }
-};
-
-const getImageClass = (imageCount, index) => {
-  if (imageCount === 3 && index === 2) {
-    return "col-span-2";
-  }
-  return "";
 };
 
 // Custom hooks
@@ -362,21 +333,18 @@ const useVoting = (
 };
 
 // Memoized components
-const UserAvatar = memo(({ username, netVotes }) => (
-  <div className="relative flex-shrink-0">
+const UserAvatar = memo(({ username }) => (
+  <div className="flex-shrink-0">
     <img
       src={`https://avatar.iran.liara.run/public/boy?username=${username}`}
       alt={username}
       width={32}
       height={32}
-      className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 p-0.5"
+      className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
       onError={(e) => {
         e.target.src = "/placeholder.svg?height=40&width=40";
       }}
     />
-    {netVotes > VOTE_THRESHOLD_FOR_AWARD && (
-      <Award className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 absolute -top-1 -right-1" />
-    )}
   </div>
 ));
 
@@ -385,17 +353,32 @@ UserAvatar.displayName = "UserAvatar";
 const ImageGrid = memo(({ images }) => {
   if (images.length === 0) return null;
 
+  // Single image takes full width
+  if (images.length === 1) {
+    return (
+      <div className="mb-3 sm:mb-4">
+        <div className="relative overflow-hidden rounded-lg bg-gray-700">
+          <img
+            src={images[0] || "/placeholder.svg"}
+            alt="Post image"
+            className="w-full h-64 sm:h-80 object-cover hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={(e) => {
+              e.target.style.display = "none";
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple images in grid
   return (
-    <div
-      className={`grid gap-2 mb-3 sm:mb-4 ${getImageGridClass(images.length)}`}
-    >
+    <div className="grid grid-cols-2 gap-2 mb-3 sm:mb-4">
       {images.map((imageurl, index) => (
         <div
           key={`${imageurl}-${index}`}
-          className={`relative overflow-hidden rounded-lg bg-gray-700 ${getImageClass(
-            images.length,
-            index
-          )}`}
+          className="relative overflow-hidden rounded-lg bg-gray-700"
         >
           <img
             src={imageurl || "/placeholder.svg"}
@@ -434,10 +417,8 @@ const StatsBar = memo(({ commentsCount, upvotes, downvotes, netVotes }) => (
   <div className="grid grid-cols-3 gap-1 text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4">
     <span className="flex items-center justify-start">
       <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-400" />
-      <span className="truncate">
-        {formatNumber(commentsCount + upvotes + downvotes)}
-      </span>
-      <span className="hidden sm:inline ml-1">participants</span>
+      <span className="truncate">{formatNumber(upvotes + downvotes)}</span>
+      <span className="hidden sm:inline ml-1">votes</span>
     </span>
     <span className="flex items-center justify-center">
       <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-green-400" />
@@ -566,7 +547,6 @@ const Posts = memo(
     const currentUser = getCurrentUser();
     const images = processImages(imageUrl);
     const formattedDate = createdAt ? formatDate(createdAt) : "";
-    const readingTime = calculateReadingTime(text);
     const shareUrl = `${window.location.origin}/test/${id}`;
 
     const { upvotes, downvotes, userVote, renderKey, handleVote, likeLoading } =
@@ -602,10 +582,6 @@ const Posts = memo(
     // Derived values
     const netVotes = upvotes - downvotes;
     const commentsCount = comments_count || 0;
-    const positivePercentage =
-      upvotes + downvotes > 0
-        ? Math.round((upvotes / (upvotes + downvotes)) * 100)
-        : 0;
 
     // Event handlers
     const handleUpvote = (e) => handleVote(e, "like");
@@ -615,7 +591,7 @@ const Posts = memo(
       shareToSocialMedia(platform, shareUrl, title);
 
     return (
-      <article className="p-2 sm:p-3 transform hover:scale-100 sm:hover:scale-102 transition-transform duration-200">
+      <article className="p-2 sm:p-3">
         <div className="block bg-gray-800 bg-opacity-50 rounded-lg p-3 sm:p-6 hover:shadow-lg transition-all duration-300 border border-gray-700 hover:border-gray-500 relative">
           <Link
             to={`/posts/${id}`}
@@ -633,7 +609,7 @@ const Posts = memo(
           >
             {/* Header */}
             <header className="flex items-center space-x-2 sm:space-x-4 mb-2 sm:mb-4">
-              <UserAvatar username={username} netVotes={netVotes} />
+              <UserAvatar username={username} />
               <div className="flex-1 min-w-0">
                 <h1 className="text-base sm:text-lg font-semibold text-white group-hover:text-blue-400 transition-colors truncate">
                   {title}
@@ -644,11 +620,6 @@ const Posts = memo(
                   </span>
                   {formattedDate && (
                     <span className="mr-2 truncate">• {formattedDate}</span>
-                  )}
-                  {readingTime && (
-                    <span className="mr-2 truncate">
-                      • {readingTime} min read
-                    </span>
                   )}
                   {categories && categories.length > 0 && (
                     <span className="truncate">
@@ -721,14 +692,6 @@ const Posts = memo(
               />
             </div>
           </div>
-
-          {/* Vote Breakdown */}
-          {(upvotes > 0 || downvotes > 0) && (
-            <footer className="mt-3 text-xs text-gray-500">
-              {formatNumber(upvotes)} upvotes • {formatNumber(downvotes)}{" "}
-              downvotes • {positivePercentage}% positive
-            </footer>
-          )}
         </div>
       </article>
     );
