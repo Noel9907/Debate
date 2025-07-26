@@ -8,7 +8,7 @@ import Login from "./pages/login/Login.jsx";
 import Profile from "./pages/profile/profile.jsx";
 import CreatePost from "./pages/home/CreatePosts.jsx";
 import SearchPage from "./pages/connect_page/search.jsx";
-import Postpage from "./pages/home/postPage/Postpage.jsx";
+import Postpage from "./pages/home/Post/Postpage.jsx";
 
 function App() {
   const { authUser } = useAuthContext();
