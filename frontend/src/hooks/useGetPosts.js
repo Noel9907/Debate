@@ -75,6 +75,7 @@ export const useGetTrending = () => {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
+          credentials: "include",
         }
       );
 

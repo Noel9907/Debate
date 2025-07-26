@@ -25,6 +25,7 @@ export const useProfileStats = () => {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
+          credentials: "include",
         }
       );
 
@@ -84,6 +85,7 @@ export const usePostStats = () => {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
+          credentials: "include",
         }
       );
 
