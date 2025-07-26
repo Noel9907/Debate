@@ -89,7 +89,7 @@ export default function Postpage() {
     categories,
     imageUrl,
   } = postData;
-
+  console.log("img _ " + imageUrl);
   const { handleLike, likeLoading } = useLikes();
 
   // Upvote/downvote state functionality
