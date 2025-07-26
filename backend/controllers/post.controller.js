@@ -13,7 +13,6 @@ export const createPost = async (req, res) => {
     const author_id = req.user;
     const imageFile = req.files?.image?.[0] || null;
     const videoFile = req.files?.video?.[0] || null;
-    console.log(username, text, author_id, categories, title);
     if (!allThere({ username, text, author_id, categories, title })) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -188,7 +187,6 @@ export const getPosts = async (req, res) => {
           result.videoUrl = post.video
             ? urls.find((u) => u.type === "video")?.url || null
             : null;
-          console.log(userId);
           if (userId) {
             const userKey = userId.toString();
 
@@ -320,6 +318,7 @@ export const like = async (req, res) => {
     const { postid, stance } = req.body;
     const userId = req.user._id.toString();
 
+    // Input validation
     if (!postid || !userId || !stance) {
       return res.status(400).json({ error: "Missing required fields" });
     }
@@ -330,7 +329,12 @@ export const like = async (req, res) => {
         .json({ error: "Stance must be 'like' or 'dislike'" });
     }
 
-    // Fetch current post (lean for performance)
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(postid)) {
+      return res.status(400).json({ error: "Invalid post ID format" });
+    }
+
+    // Use findOneAndUpdate with optimistic concurrency control
     const post = await Post.findById(postid, {
       likes: 1,
       dislikes: 1,
@@ -338,133 +342,102 @@ export const like = async (req, res) => {
       dislikes_count: 1,
       comments_count: 1,
       author_id: 1,
+      __v: 1, // Version key for optimistic locking
     }).lean();
 
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    // Convert stored plain objects to Maps
+    // Convert to Maps for efficient operations
     const currentLikes = new Map(Object.entries(post.likes || {}));
     const currentDislikes = new Map(Object.entries(post.dislikes || {}));
+
     const wasLiked = currentLikes.has(userId);
     const wasDisliked = currentDislikes.has(userId);
 
-    // New Maps for updates
-    const newLikes = new Map(currentLikes);
-    const newDislikes = new Map(currentDislikes);
-    let likesCountDelta = 0;
-    let dislikesCountDelta = 0;
-    let pointsDelta = 0;
+    // Calculate updates
+    const updates = calculateUpdates(
+      stance,
+      wasLiked,
+      wasDisliked,
+      userId,
+      currentLikes,
+      currentDislikes
+    );
 
-    if (stance === "like") {
-      if (wasLiked) {
-        // User is removing their like
-        newLikes.delete(userId);
-        likesCountDelta = -1;
-        pointsDelta = -0.1;
-        console.log("Action: Removing like");
-      } else {
-        // User is adding like
-        newLikes.set(userId, true);
-        likesCountDelta = 1;
-        pointsDelta = 0.1;
-        console.log("Action: Adding like");
-        if (wasDisliked) {
-          // Also remove dislike
-          newDislikes.delete(userId);
-          dislikesCountDelta = -1;
-          pointsDelta = 0.2;
-          console.log("Action: Also removing existing dislike");
-        }
-      }
-    } else {
-      // Dislike case
-      if (wasDisliked) {
-        // User is removing their dislike
-        newDislikes.delete(userId);
-        dislikesCountDelta = -1;
-        pointsDelta = 0.1;
-        console.log("Action: Removing dislike");
-      } else {
-        // User is adding dislike
-        newDislikes.set(userId, true);
-        dislikesCountDelta = 1;
-        pointsDelta = -0.1;
-        console.log("Action: Adding dislike");
-        if (wasLiked) {
-          // Also remove like
-          newLikes.delete(userId);
-          likesCountDelta = -1;
-          pointsDelta = -0.2;
-          console.log("Action: Also removing existing like");
-        }
-      }
+    if (updates.noChange) {
+      // No actual change needed, return current state
+      const message = stance === "like" ? "Post unliked" : "Dislike removed";
+      return res.status(200).json({
+        message,
+        likes_count: post.likes_count,
+        dislikes_count: post.dislikes_count,
+        isLiked: wasLiked,
+        isDisliked: wasDisliked,
+      });
     }
 
-    // Recalculate
-    const updatedLikesCount = post.likes_count + likesCountDelta;
-    const updatedDislikesCount = post.dislikes_count + dislikesCountDelta;
-    const updatedEngagementScore =
-      updatedLikesCount * 1.5 +
-      post.comments_count * 2 -
-      updatedDislikesCount * 0.5;
-
-    console.log(
-      "Deltas - Likes:",
-      likesCountDelta,
-      "Dislikes:",
-      dislikesCountDelta
-    );
-    console.log(
-      "New counts - Likes:",
-      updatedLikesCount,
-      "Dislikes:",
-      updatedDislikesCount
-    );
+    // Calculate new values
+    const newLikesCount = post.likes_count + updates.likesCountDelta;
+    const newDislikesCount = post.dislikes_count + updates.dislikesCountDelta;
+    const newEngagementScore =
+      newLikesCount * 1.5 + post.comments_count * 2 - newDislikesCount * 0.5;
 
     // Convert Maps back to objects for database storage
-    const likesObject = Object.fromEntries(newLikes);
-    const dislikesObject = Object.fromEntries(newDislikes);
+    const likesObject = Object.fromEntries(updates.newLikes);
+    const dislikesObject = Object.fromEntries(updates.newDislikes);
 
-    // Update in DB
-    const update = await Post.findByIdAndUpdate(
-      postid,
+    // Atomic update with optimistic locking to prevent race conditions
+    const updatedPost = await Post.findOneAndUpdate(
+      {
+        _id: postid,
+        __v: post.__v, // Optimistic locking - only update if version matches
+      },
       {
         $set: {
           likes: likesObject,
           dislikes: dislikesObject,
-          likes_count: updatedLikesCount,
-          dislikes_count: updatedDislikesCount,
-          engagement_score: updatedEngagementScore,
+          likes_count: newLikesCount,
+          dislikes_count: newDislikesCount,
+          engagement_score: newEngagementScore,
         },
+        $inc: { __v: 1 }, // Increment version
       },
       {
         new: true,
-        select: "likes dislikes likes_count dislikes_count author_id",
+        select: "likes_count dislikes_count author_id __v",
       }
     );
 
-    if (!update) {
-      return res.status(404).json({ error: "Post not found after update" });
+    if (!updatedPost) {
+      // Document was modified by another request, retry logic could be added here
+      return res.status(409).json({
+        error: "Post was modified by another request, please try again",
+      });
     }
 
-    // Async user point update
-    if (pointsDelta !== 0) {
-      User.updateOne(
-        { _id: post.author_id },
-        { $inc: { total_debate_points: pointsDelta } }
-      ).catch((err) => console.error("Error updating user points:", err));
+    // Async user point update (non-blocking)
+    if (updates.pointsDelta !== 0) {
+      setImmediate(() => {
+        User.updateOne(
+          { _id: post.author_id },
+          { $inc: { total_debate_points: updates.pointsDelta } }
+        ).catch((err) => {
+          console.error("Error updating user points:", {
+            error: err.message,
+            userId: post.author_id,
+            pointsDelta: updates.pointsDelta,
+            postId: postid,
+            timestamp: new Date().toISOString(),
+          });
+        });
+      });
     }
 
-    // FIX: Use the Maps we created instead of the database object
-    const isLiked = newLikes.has(userId);
-    const isDisliked = newDislikes.has(userId);
-
-    console.log("Final state - isLiked:", isLiked, "isDisliked:", isDisliked);
-    console.log("newLikes has userId:", newLikes.has(userId));
-    console.log("newDislikes has userId:", newDislikes.has(userId));
-    console.log("userId:", userId);
+    // Determine final state
+    const isLiked = updates.newLikes.has(userId);
+    const isDisliked = updates.newDislikes.has(userId);
 
     const message =
       stance === "like"
@@ -475,18 +448,24 @@ export const like = async (req, res) => {
         ? "Post disliked"
         : "Dislike removed";
 
-    console.log("Response message:", message);
-    console.log("=== END DEBUG ===");
-
     return res.status(200).json({
       message,
-      likes_count: update.likes_count,
-      dislikes_count: update.dislikes_count,
+      likes_count: updatedPost.likes_count,
+      dislikes_count: updatedPost.dislikes_count,
       isLiked,
       isDisliked,
     });
   } catch (error) {
-    console.error("Error in like controller:", error);
+    // Log error for monitoring (use structured logging in production)
+    console.error("Error in like controller:", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?._id,
+      postId: req.body?.postid,
+      stance: req.body?.stance,
+      timestamp: new Date().toISOString(),
+    });
+
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -593,3 +572,65 @@ export const reportContent = async (req, res) => {
 function allThere({ username, text, author_id, categories, title }) {
   return !!(username && text && author_id && categories && title);
 }
+const calculateUpdates = (
+  stance,
+  wasLiked,
+  wasDisliked,
+  userId,
+  currentLikes,
+  currentDislikes
+) => {
+  const newLikes = new Map(currentLikes);
+  const newDislikes = new Map(currentDislikes);
+  let likesCountDelta = 0;
+  let dislikesCountDelta = 0;
+  let pointsDelta = 0;
+
+  if (stance === "like") {
+    if (wasLiked) {
+      // Remove like
+      newLikes.delete(userId);
+      likesCountDelta = -1;
+      pointsDelta = -0.1;
+    } else {
+      // Add like
+      newLikes.set(userId, true);
+      likesCountDelta = 1;
+      pointsDelta = 0.1;
+      if (wasDisliked) {
+        // Also remove dislike
+        newDislikes.delete(userId);
+        dislikesCountDelta = -1;
+        pointsDelta = 0.2;
+      }
+    }
+  } else {
+    // Dislike case
+    if (wasDisliked) {
+      // Remove dislike
+      newDislikes.delete(userId);
+      dislikesCountDelta = -1;
+      pointsDelta = 0.1;
+    } else {
+      // Add dislike
+      newDislikes.set(userId, true);
+      dislikesCountDelta = 1;
+      pointsDelta = -0.1;
+      if (wasLiked) {
+        // Also remove like
+        newLikes.delete(userId);
+        likesCountDelta = -1;
+        pointsDelta = -0.2;
+      }
+    }
+  }
+
+  return {
+    newLikes,
+    newDislikes,
+    likesCountDelta,
+    dislikesCountDelta,
+    pointsDelta,
+    noChange: likesCountDelta === 0 && dislikesCountDelta === 0,
+  };
+};
