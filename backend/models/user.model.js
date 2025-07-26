@@ -10,14 +10,26 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       index: true,
     },
+    email: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true, // Allows multiple null values for non-Google users
+      trim: true,
+      lowercase: true,
+    },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isGoogleUser; // Password not required for Google users
+      },
       minlength: 6,
     },
     gender: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isGoogleUser; // Gender not required for Google users
+      },
       enum: ["male", "female"],
     },
     profilepic: {
@@ -59,6 +71,20 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Google OAuth fields
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple null values
+    },
+    isGoogleUser: {
+      type: Boolean,
+      default: false,
+    },
+    fullname: {
+      type: String,
+      required: false, // For Google users, we get their display name
+    },
   },
   {
     timestamps: true,
@@ -77,6 +103,8 @@ userSchema.statics.getLeaderboard = async function (limit = 50) {
 
 // Indexes
 userSchema.index({ total_debate_points: -1 });
+userSchema.index({ email: 1 });
+userSchema.index({ googleId: 1 });
 
 const User = mongoose.model("User", userSchema);
 export default User;
