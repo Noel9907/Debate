@@ -25,6 +25,7 @@ const useCreateComment = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ postid, username, text, position, author_id }),
+          credentials: "include",
         }
       );
 

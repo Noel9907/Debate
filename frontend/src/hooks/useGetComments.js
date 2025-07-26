@@ -61,6 +61,7 @@ export const useGetComments = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ postid: postId }),
           signal,
+          credentials: "include",
         }
       );
 

@@ -94,7 +94,7 @@ export const createPost = async (req, res) => {
 export const post = async (req, res) => {
   try {
     const { postid } = req.query;
-    userId = req.user._id;
+    const userId = req.user._id;
     if (!postid) {
       throw new Error("no Post id");
     }
