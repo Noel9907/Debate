@@ -105,7 +105,7 @@ export default function Login() {
 
         <div className="px-8 py-4 bg-gray-100 border-t border-gray-200">
           <p className="text-sm text-center text-gray-600">
-            Don&apos;t have an account?{" "}
+            Don&apos;t have an account?
             <Link
               to="/signup"
               className="font-medium text-red-600 hover:text-red-500 transition-colors"
