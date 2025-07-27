@@ -4,7 +4,6 @@ import User from "../../../models/user.model.js";
 import generateTockenAndSetCookie from "../../../utils/generateTocken.js";
 import { configDotenv } from "dotenv";
 configDotenv();
-console.log(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET

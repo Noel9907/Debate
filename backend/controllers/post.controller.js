@@ -105,7 +105,12 @@ export const post = async (req, res) => {
     }
     if (post.image) {
       post.imageUrl = await getObjectSignedUrl(
-        `post-${post._id}-${post.author_id}`
+        `post-image-${post._id}-${post.author_id}`
+      );
+    }
+    if (post.video) {
+      post.videoUrl = await getObjectSignedUrl(
+        `post-video-${post._id}-${post.author_id}`
       );
     }
     res.status(200).json([post]);

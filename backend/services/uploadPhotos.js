@@ -32,7 +32,6 @@ export async function getObjectSignedUrl(key) {
     Bucket: bucketName,
     Key: key,
   };
-
   // https://aws.amazon.com/blogs/developer/generate-presigned-url-modular-aws-sdk-javascript/
   const command = new GetObjectCommand(params);
   const seconds = 60;
@@ -41,5 +40,5 @@ export async function getObjectSignedUrl(key) {
   return url;
 }
 export function generateFileName(type, id, userId) {
-  return `${type}-${id}-${userId}`;
+  return `post-${type}-${id}-${userId}`;
 }

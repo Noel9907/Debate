@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -20,8 +22,24 @@ import { useGetComments } from "../../../hooks/useGetComments.js";
 import { useGetPost } from "../../../hooks/useGetPosts.js";
 import useLikes from "../../../hooks/useLikes.js";
 import Footernav from "../../../../components/Footernav.jsx";
+import MediaPlayer from "./MediaPlayer.jsx";
 
-export default function Postpage() {
+// Format number function
+const formatNumber = (num) => {
+  if (num === null || num === undefined || isNaN(num)) return "0";
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+  if (num >= 10000) {
+    return (num / 1000).toFixed(0) + "k";
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  }
+  return num.toString();
+};
+
+export default function PostPage() {
   const CurrentUser = JSON.parse(localStorage.getItem("duser"));
   const commentid = CurrentUser?._id;
   const { postid } = useParams();
@@ -36,16 +54,16 @@ export default function Postpage() {
     text: "",
     title: "",
     categories: [],
+    imageUrl: "",
+    videoUrl: "",
+    video: false,
+    image: false,
   });
 
   // Share functionality
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const shareMenuRef = useRef(null);
-
-  // Image modal state
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Fetch post data when postid changes
   useEffect(() => {
@@ -88,8 +106,11 @@ export default function Postpage() {
     title,
     categories,
     imageUrl,
+    videoUrl,
+    video,
+    image,
   } = postData;
-  console.log("img _ " + imageUrl);
+
   const { handleLike, likeLoading } = useLikes();
 
   // Upvote/downvote state functionality
@@ -130,180 +151,31 @@ export default function Postpage() {
   const [commentError, setCommentError] = useState("");
   const { createComment, LoadingComment } = useCreateComment();
 
-  // Format number function
-  const formatNumber = (num) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-    }
-    if (num >= 10000) {
-      return (num / 1000).toFixed(0) + "k";
-    }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
-    }
-    return num;
-  };
-
-  // Helper function to process imageUrl
-  const getImages = () => {
-    if (!imageUrl) return [];
-
-    // If imageUrl is already an array, return it (limited to 3)
-    if (Array.isArray(imageUrl)) {
-      return imageUrl.slice(0, 3);
-    }
-
-    // If imageUrl is a string, return it as a single-item array
-    if (typeof imageUrl === "string") {
-      return [imageUrl];
-    }
-
-    return [];
-  };
-
-  const images = getImages();
-
-  // Image modal functions
-  const openImageModal = (index) => {
-    setCurrentImageIndex(index);
-    setShowImageModal(true);
-  };
-
-  const closeImageModal = () => {
-    setShowImageModal(false);
-  };
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e) => {
-    if (!showImageModal) return;
-
-    if (e.key === "Escape") {
-      closeImageModal();
-    } else if (e.key === "ArrowRight") {
-      nextImage();
-    } else if (e.key === "ArrowLeft") {
-      prevImage();
-    }
-  };
-
-  const handleUpvote = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!CurrentUser) {
-      alert("You need to be logged in to vote");
-      return;
-    }
-    // Don't allow actions while already loading
-    if (likeLoading) {
-      return;
-    }
-    try {
-      // Call API first without optimistic updates
-      await handleLike({
-        postid: _id,
-        user: CurrentUser._id,
-        stance: "like",
-      });
-      // After successful API call, fetch the updated post
-      getPost(postid);
-    } catch (error) {
-      console.error("Error handling upvote:", error);
-    }
-  };
-
-  const handleDownvote = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!CurrentUser) {
-      alert("You need to be logged in to vote");
-      return;
-    }
-    // Don't allow actions while already loading
-    if (likeLoading) {
-      return;
-    }
-    try {
-      // Call API first without optimistic updates
-      await handleLike({
-        postid: _id,
-        user: CurrentUser._id,
-        stance: "dislike",
-      });
-      // After successful API call, fetch the updated post
-      getPost(postid);
-    } catch (error) {
-      console.error("Error handling downvote:", error);
-    }
-  };
-
-  // Comment submission handler with optimistic update
+  // Comment submission handler
   const handleSubmitComment = async (e) => {
     e.preventDefault();
-    setCommentError("");
     if (!CurrentUser) {
-      setCommentError("You must be logged in to comment");
+      alert("You need to be logged in to comment");
       return;
     }
-    if (newComment.trim() && _id) {
-      const comment = {
-        postid: _id,
-        username: CurrentUser?.username || "Anonymous",
-        text: newComment,
-        position: isFor,
-        author_id: commentid,
-      };
-      console.log("Sending comment data:", comment);
-      // Create an optimistic comment with a temporary ID
-      const optimisticComment = {
-        ...comment,
-        _id: `temp-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-      // Add the optimistic comment to the UI immediately
-      updateComments([optimisticComment, comments]);
-      // Clear the input
-      setNewComment("");
-      try {
-        await createComment(comment);
-        // After successful creation, fetch fresh comments
-        getComments(_id);
-      } catch (error) {
-        console.error("Error creating comment:", error);
-        setCommentError("Failed to post comment. Please try again.");
-        // Remove the optimistic comment on failure
-        updateComments(comments.filter((c) => c._id !== optimisticComment._id));
-      }
+    if (!newComment.trim()) {
+      setCommentError("Comment cannot be empty");
+      return;
     }
-  };
-
-  // Reply handler for nested comments
-  const handleReply = (commentId, replyText, isFor) => {
-    const updatedComments = comments.map((comment) => {
-      if (comment._id === commentId) {
-        return {
-          ...comment,
-          replies: [
-            ...(comment.replies || []),
-            {
-              _id: `${commentId}-${(comment.replies?.length || 0) + 1}`,
-              username: CurrentUser?.username || "Anonymous",
-              text: replyText,
-              isFor,
-            },
-          ],
-        };
-      }
-      return comment;
-    });
-    updateComments(updatedComments);
+    setCommentError("");
+    try {
+      await createComment({
+        postid: _id,
+        user: CurrentUser._id,
+        text: newComment,
+        stance: isFor ? "for" : "against",
+      });
+      setNewComment("");
+      getComments(_id);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      setCommentError("Failed to post comment");
+    }
   };
 
   // Share functionality
@@ -366,43 +238,67 @@ export default function Postpage() {
     };
   }, [showShareMenu]);
 
-  // Keyboard navigation for image modal
-  useEffect(() => {
-    if (showImageModal) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden"; // Prevent background scrolling
-    } else {
-      document.body.style.overflow = "unset";
+  // Helper function to process imageUrl
+  const getImages = () => {
+    if (!imageUrl || !image) return [];
+    if (Array.isArray(imageUrl)) {
+      return imageUrl.slice(0, 3);
     }
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "unset";
-    };
-  }, [showImageModal]);
-
-  // Calculate reading time (using 200 words/min average)
-  const readingTime = text
-    ? Math.max(1, Math.ceil(text.split(" ").length / 200))
-    : 1;
-
-  // Format date (using current date for demo)
-  const formattedDate = new Date().toLocaleDateString();
-
-  // Mock debate stats - using the length of comments array
-  const debate = {
-    participants: 25,
-    comments: comments.length || 0,
+    if (typeof imageUrl === "string") {
+      return [imageUrl];
+    }
+    return [];
   };
 
-  // Handle post loading state
-  if (PostLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex justify-center items-center">
-        <p>Loading post...</p>
-      </div>
-    );
-  }
+  const images = getImages();
+
+  const handleUpvote = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!CurrentUser) {
+      alert("You need to be logged in to vote");
+      return;
+    }
+    if (likeLoading) {
+      return;
+    }
+    try {
+      await handleLike({
+        postid: _id,
+        user: CurrentUser._id,
+        stance: "like",
+      });
+      getPost(postid);
+    } catch (error) {
+      console.error("Error handling upvote:", error);
+    }
+  };
+
+  const handleDownvote = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!CurrentUser) {
+      alert("You need to be logged in to vote");
+      return;
+    }
+    if (likeLoading) {
+      return;
+    }
+    try {
+      await handleLike({
+        postid: _id,
+        user: CurrentUser._id,
+        stance: "dislike",
+      });
+      getPost(postid);
+    } catch (error) {
+      console.error("Error handling downvote:", error);
+    }
+  };
+
+  const handleReply = (commentId) => {
+    console.log("Reply to comment:", commentId);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
@@ -449,8 +345,13 @@ export default function Postpage() {
                         <span className="text-blue-400">{username}</span>
                       </Link>
                     </span>
-                    <span className="mr-2">• {formattedDate}</span>
-                    <span className="mr-2">• {readingTime} min read</span>
+                    <span className="mr-2">
+                      • {new Date().toLocaleDateString()}
+                    </span>
+                    <span className="mr-2">
+                      • {Math.max(1, Math.ceil(text.split(" ").length / 200))}{" "}
+                      min read
+                    </span>
                     {Array.isArray(categories) && categories.length > 0 && (
                       <span className="mr-2">
                         •
@@ -464,108 +365,61 @@ export default function Postpage() {
                 </div>
               </div>
 
-              {/* Main content area - responsive layout */}
-              <div className={`${images.length > 0 ? "lg:flex lg:gap-6" : ""}`}>
-                {/* Images section - left side on large screens */}
-                {images.length > 0 && (
-                  <div className="mb-6 lg:mb-0 lg:w-1/2 lg:flex-shrink-0">
-                    {images.length === 1 ? (
-                      // Single image - full width
-                      <div
-                        className="rounded-lg overflow-hidden cursor-pointer"
-                        onClick={() => openImageModal(0)}
-                      >
-                        <img
-                          src={images[0] || "/placeholder.svg"}
-                          alt="Post image"
-                          className="w-full h-auto lg:h-64 xl:h-80 object-cover bg-gray-700 hover:opacity-90 transition-opacity"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      </div>
-                    ) : images.length === 2 ? (
-                      // Two images - side by side
-                      <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                        {images.map((img, index) => (
-                          <img
-                            key={index}
-                            src={img || "/placeholder.svg"}
-                            alt={`Post image ${index + 1}`}
-                            className="w-full h-48 lg:h-32 xl:h-40 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => openImageModal(index)}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      // Three images - first large, other two stacked
-                      <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                        <img
-                          src={images[0] || "/placeholder.svg"}
-                          alt="Post image 1"
-                          className="w-full h-96 lg:h-64 xl:h-80 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => openImageModal(0)}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                        <div className="grid grid-rows-2 gap-2">
-                          <img
-                            src={images[1] || "/placeholder.svg"}
-                            alt="Post image 2"
-                            className="w-full h-47 lg:h-31 xl:h-39 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => openImageModal(1)}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <img
-                            src={images[2] || "/placeholder.svg"}
-                            alt="Post image 3"
-                            className="w-full h-47 lg:h-31 xl:h-39 object-cover bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={() => openImageModal(2)}
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
+              {/* Main content area - responsive two-column layout */}
+              <div className="flex flex-col lg:flex-row lg:gap-8 lg:items-start">
+                {/* Media section - left side on desktop, top on mobile */}
+                {(images.length > 0 || (video && videoUrl)) && (
+                  <div className="w-full lg:w-1/2 lg:flex-shrink-0 mb-6 lg:mb-0">
+                    <MediaPlayer
+                      videoUrl={videoUrl}
+                      images={images}
+                      hasVideo={video && videoUrl}
+                      hasImages={image && images.length > 0}
+                      className="sticky lg:top-24"
+                    />
                   </div>
                 )}
 
-                {/* Content section - right side on large screens */}
-                <div className={`${images.length > 0 ? "lg:w-1/2" : "w-full"}`}>
-                  <p className="text-gray-300 mb-6">{text}</p>
+                {/* Content section - right side on desktop, bottom on mobile */}
+                <div
+                  className={`w-full ${
+                    images.length > 0 || (video && videoUrl)
+                      ? "lg:w-1/2"
+                      : "lg:w-full"
+                  } lg:min-w-0`}
+                >
+                  {/* Post text content */}
+                  <div className="mb-6">
+                    <p className="text-gray-300 text-lg leading-relaxed break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                      {text}
+                    </p>
+                  </div>
 
                   {/* Stats section */}
-                  <div className="flex justify-between text-sm text-gray-400 mb-4">
+                  <div className="flex flex-wrap justify-between text-sm text-gray-400 mb-6 gap-4">
                     <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-1 text-blue-400" />{" "}
-                      {formatNumber(debate.participants)} participants
+                      <Users className="w-4 h-4 mr-1 text-blue-400" />
+                      {formatNumber(25)} participants
                     </span>
                     <span className="flex items-center">
-                      <TrendingUp className="w-4 h-4 mr-1 text-green-400" />{" "}
+                      <TrendingUp className="w-4 h-4 mr-1 text-green-400" />
                       {formatNumber(netVotes)} net points
                     </span>
                     <span className="flex items-center">
-                      <MessageSquare className="w-4 h-4 mr-1 text-purple-400" />{" "}
-                      {formatNumber(debate.comments)} comments
+                      <MessageSquare className="w-4 h-4 mr-1 text-purple-400" />
+                      {formatNumber(comments.length)} comments
                     </span>
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex justify-between mt-6">
-                    <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-6">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={handleUpvote}
                         disabled={likeLoading}
-                        className={`flex items-center px-3 py-1 rounded-md hover:bg-gray-700 transition-colors ${
+                        className={`flex items-center px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors ${
                           userVote === "up"
-                            ? "text-green-400"
+                            ? "text-green-400 bg-green-400/10"
                             : "text-gray-400 hover:text-white"
                         } ${
                           likeLoading ? "opacity-50 cursor-not-allowed" : ""
@@ -577,16 +431,16 @@ export default function Postpage() {
                           }`}
                         />
                         <span>Upvote</span>
-                        <span className="ml-1 text-xs bg-gray-700 px-1.5 py-0.5 rounded-full">
+                        <span className="ml-2 text-xs bg-gray-700 px-2 py-1 rounded-full">
                           {formatNumber(upvotes)}
                         </span>
                       </button>
                       <button
                         onClick={handleDownvote}
                         disabled={likeLoading}
-                        className={`flex items-center px-3 py-1 rounded-md hover:bg-gray-700 transition-colors ${
+                        className={`flex items-center px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors ${
                           userVote === "down"
-                            ? "text-red-400"
+                            ? "text-red-400 bg-red-400/10"
                             : "text-gray-400 hover:text-white"
                         } ${
                           likeLoading ? "opacity-50 cursor-not-allowed" : ""
@@ -598,20 +452,21 @@ export default function Postpage() {
                           }`}
                         />
                         <span>Downvote</span>
-                        <span className="ml-1 text-xs bg-gray-700 px-1.5 py-0.5 rounded-full">
+                        <span className="ml-2 text-xs bg-gray-700 px-2 py-1 rounded-full">
                           {formatNumber(downvotes)}
                         </span>
                       </button>
                     </div>
+
                     <div className="relative">
                       <button
-                        className="flex items-center text-gray-400 hover:text-white transition-colors px-3 py-1 rounded-md hover:bg-gray-700"
+                        className="flex items-center text-gray-400 hover:text-white transition-colors px-4 py-2 rounded-lg hover:bg-gray-700"
                         onClick={handleShareButtonClick}
                       >
                         <Share2 className="w-4 h-4 mr-2" />
                         Share
                       </button>
-                      {/* Share Menu Dropdown */}
+                      {/* Share Menu Dropdown - keep existing code */}
                       {showShareMenu && (
                         <div
                           ref={shareMenuRef}
@@ -640,7 +495,7 @@ export default function Postpage() {
                           </button>
                           <button
                             onClick={() => shareToSocialMedia("linkedin")}
-                            className="flex items-center px-4 py-2 text-sm text-gray-3000 hover:bg-gray-700 w-full text-left"
+                            className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
                           >
                             <Linkedin className="w-4 h-4 mr-3" />
                             LinkedIn
@@ -650,13 +505,19 @@ export default function Postpage() {
                     </div>
                   </div>
 
-                  {/* Vote breakdown tooltip */}
+                  {/* Vote breakdown */}
                   {(upvotes > 0 || downvotes > 0) && (
-                    <div className="mt-3 text-xs text-gray-500">
-                      {formatNumber(upvotes)} upvotes •{" "}
-                      {formatNumber(downvotes)} downvotes •{" "}
-                      {Math.round((upvotes / (upvotes + downvotes || 1)) * 100)}
-                      % positive
+                    <div className="text-xs text-gray-500 border-t border-gray-700 pt-4">
+                      <div className="flex flex-wrap gap-4">
+                        <span>{formatNumber(upvotes)} upvotes</span>
+                        <span>{formatNumber(downvotes)} downvotes</span>
+                        <span>
+                          {Math.round(
+                            (upvotes / (upvotes + downvotes || 1)) * 100
+                          )}
+                          % positive
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -699,7 +560,6 @@ export default function Postpage() {
                   </p>
                 )}
               </div>
-
               <form onSubmit={handleSubmitComment} className="space-y-4">
                 {commentError && (
                   <div className="p-2 bg-red-600 bg-opacity-20 border border-red-400 rounded text-red-200 text-sm">
@@ -758,59 +618,6 @@ export default function Postpage() {
               </form>
             </div>
           </>
-        )}
-
-        {/* Image Modal */}
-        {showImageModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-            <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
-              {/* Close button */}
-              <button
-                onClick={closeImageModal}
-                className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              {/* Navigation arrows - only show if multiple images */}
-              {images.length > 1 && (
-                <>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 transition-colors"
-                  >
-                    <ArrowLeft className="w-6 h-6" />
-                  </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-gray-800 bg-opacity-50 rounded-full p-2 transition-colors"
-                  >
-                    <ArrowLeft className="w-6 h-6 transform rotate-180" />
-                  </button>
-                </>
-              )}
-
-              {/* Main image */}
-              <img
-                src={images[currentImageIndex] || "/placeholder.svg"}
-                alt={`Post image ${currentImageIndex + 1}`}
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  e.target.src = "/placeholder.svg";
-                }}
-              />
-
-              {/* Image counter - only show if multiple images */}
-              {images.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 bg-opacity-75 text-white px-3 py-1 rounded-full text-sm">
-                  {currentImageIndex + 1} / {images.length}
-                </div>
-              )}
-            </div>
-
-            {/* Click outside to close */}
-            <div className="absolute inset-0 -z-10" onClick={closeImageModal} />
-          </div>
         )}
       </main>
 
