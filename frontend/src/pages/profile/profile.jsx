@@ -49,10 +49,7 @@ export default function Profile() {
     username.username || JSON.parse(localStorage.getItem("duser")).username;
   const currentUser = JSON.parse(localStorage.getItem("duser"));
   const isOwnProfile = user === currentUser?.username;
-  const profileUserId = profileStats?._id || profileStats?.userId;
-
-  console.log(profileUserId);
-
+  const profileUserId = profileStats?._id;
   useEffect(() => {
     if (user) {
       getProfileStats(user);

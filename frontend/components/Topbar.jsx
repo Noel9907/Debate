@@ -1,6 +1,12 @@
-import React, { useState } from "react";
+"use client";
+
+import { useState } from "react";
+import { Bell, MessageCircle, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+
 const Topbar = () => {
   const [showConfirm, setShowConfirm] = useState(false);
+
   let username = "user";
   try {
     const user = JSON.parse(localStorage.getItem("duser"));
@@ -17,7 +23,6 @@ const Topbar = () => {
         method: "POST",
         credentials: "include",
       });
-
       if (res.ok) {
         console.log("Logging out...");
         localStorage.removeItem("duser");
@@ -37,12 +42,28 @@ const Topbar = () => {
       <header className="bg-gray-900 bg-opacity-80 backdrop-blur-md py-4 px-4 sticky top-0 z-50 border-b border-gray-800">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-red-500">SpeakUp</h1>
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition"
-          >
-            Logout
-          </button>
+
+          <div className="flex items-center space-x-4">
+            <button className="p-2 text-gray-300 hover:text-white transition rounded-md hover:bg-gray-800">
+              <Bell size={20} />
+            </button>
+            <button className="p-2 text-gray-300 hover:text-white transition rounded-md hover:bg-gray-800">
+              <Link to={"/createPosts"}>
+                <MessageCircle size={20} />
+              </Link>
+            </button>
+            <button className="p-2 text-gray-300 hover:text-white transition rounded-md hover:bg-gray-800">
+              <Link to={"/createPosts"}>
+                <Plus size={20} />
+              </Link>
+            </button>
+            <button
+              onClick={() => setShowConfirm(true)}
+              className="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 

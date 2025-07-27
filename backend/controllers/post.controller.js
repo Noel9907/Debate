@@ -322,8 +322,6 @@ export const like = async (req, res) => {
   try {
     const { postid, stance } = req.body;
     const userId = req.user._id.toString();
-
-    // Input validation
     if (!postid || !userId || !stance) {
       return res.status(400).json({ error: "Missing required fields" });
     }

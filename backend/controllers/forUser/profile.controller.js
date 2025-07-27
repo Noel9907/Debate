@@ -210,6 +210,8 @@ export const getUserDebateStats = async (req, res) => {
         _id: user._id,
         username: user.username,
         bio: user.bio,
+        location: user.location,
+        interestedCategories: user.interested_categories,
         trackers: user.followers_count,
         tracking: user.following_count,
         debatesJoined, // Unique debates commented on

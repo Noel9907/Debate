@@ -5,6 +5,7 @@ import useSearchUsers from "../../hooks/connectPage/useSearchuser";
 import ProfileCard from "./profile";
 import Posts from "../home/Post";
 import { useGetTrending } from "../../hooks/useGetPosts";
+import Topbar from "../../../components/Topbar";
 
 export default function SearchPage() {
   const { loading, User: searchedUsers, searchUsers } = useSearchUsers();
@@ -152,14 +153,7 @@ export default function SearchPage() {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-        <header className="bg-gray-900 bg-opacity-50 backdrop-blur-md py-4 sticky top-0 z-50">
-          <div className="container mx-auto px-4">
-            <h1 className="text-2xl font-bold text-white">
-              Search {searchType === "users" ? "Users" : "Debates"}
-            </h1>
-          </div>
-        </header>
-
+        <Topbar />
         <main className="container mx-auto px-4 py-8">
           {/* Search form */}
           <form onSubmit={handleSearch} className="mb-6">
