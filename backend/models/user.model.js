@@ -103,8 +103,6 @@ userSchema.statics.getLeaderboard = async function (limit = 50) {
 
 // Indexes
 userSchema.index({ total_debate_points: -1 });
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
 
 const User = mongoose.model("User", userSchema);
 export default User;
