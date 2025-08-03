@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Plus, Globe, ImageIcon, Video, FileText } from "lucide-react";

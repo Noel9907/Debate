@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 
 export const useGetConversations = (page = 1, limit = 20) => {
