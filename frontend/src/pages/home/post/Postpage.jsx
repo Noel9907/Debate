@@ -14,7 +14,7 @@ import {
   Linkedin,
   X,
 } from "lucide-react";
-import CommentComponent from "../Post/CommentComponent.jsx";
+import CommentComponent from "./CommentComponent.jsx";
 import useCreateComment from "../../../hooks/useCreateComment.js";
 import { useGetComments } from "../../../hooks/useGetComments.js";
 import { useGetPost } from "../../../hooks/useGetPosts.js";
