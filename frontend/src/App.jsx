@@ -8,7 +8,7 @@ import Login from "./pages/login/Login.jsx";
 import Profile from "./pages/profile/profile.jsx";
 import CreatePost from "./pages/home/CreatePosts.jsx";
 import SearchPage from "./pages/connect_page/search.jsx";
-import Postpage from "./pages/home/Post/Postpage.jsx";
+import Postpage from "./pages/home/post/Postpage.jsx";
 import ChatPage from "../components/ChatPage.jsx";
 
 function App() {
