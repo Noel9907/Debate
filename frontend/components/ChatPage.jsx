@@ -37,16 +37,16 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-gray-900 overflow-hidden">
+    <div className="fixed inset-0  flex flex-col bg-gray-900 ">
       <div className="shrink-0">
         <Topbar />
       </div>
 
       {/* Main content: Conversations and Messages */}
-      <div className="flex h-screen">
+      <div className="flex">
         {/* Left panel */}
-        <div className="w-64 border-r border-gray-700">
-          <div className="h-screen overflow-y-auto">
+        <div className=" border-r border-gray-700 z-10 w-56">
+          <div className=" overflow-y-auto">
             <ConversationList
               onSelectConversation={setSelectedConversation}
               selectedConversationId={selectedConversation?._id}
