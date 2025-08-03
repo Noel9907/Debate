@@ -19,10 +19,13 @@ const Topbar = () => {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/user/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/user/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
       if (res.ok) {
         console.log("Logging out...");
         localStorage.removeItem("duser");
