@@ -43,8 +43,9 @@ export const createPost = async (req, res) => {
         .status(400)
         .json({ error: "At least one category is required" });
     }
-
+    console.log(username);
     const user = await User.findOne({ username });
+    console.log(user);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -66,12 +67,12 @@ export const createPost = async (req, res) => {
         .resize({ height: 1920, width: 1080, fit: "contain" })
         .toBuffer();
 
-      const imageName = generateFileName("post-image", post.id, author_id);
+      const imageName = generateFileName("image", post.id, author_id);
       await uploadFile(imageBuffer, imageName, imageFile.mimetype);
     }
 
     if (videoFile) {
-      const videoName = generateFileName("post-video", post.id, author_id);
+      const videoName = generateFileName("video", post.id, author_id);
       await uploadFile(videoFile.buffer, videoName, videoFile.mimetype);
     }
 

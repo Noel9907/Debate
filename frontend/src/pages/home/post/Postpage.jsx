@@ -107,7 +107,7 @@ export default function PostPage() {
     video,
     image,
   } = postData;
-
+  console.log(postData);
   const { handleLike, likeLoading } = useLikes();
 
   // Upvote/downvote state functionality

@@ -40,5 +40,5 @@ export async function getObjectSignedUrl(key) {
   return url;
 }
 export function generateFileName(type, id, userId) {
-  return `post-${type}-${id}-${userId}`;
+  return `post-${type}-${id}-${userId._id}`;
 }
