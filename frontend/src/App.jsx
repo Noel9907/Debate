@@ -61,7 +61,7 @@ function App() {
           element={authUser ? <DebateCommentPage /> : <Login />}
         /> */}
         <Route
-          path="/t"
+          path="/chat"
           element={authUser ? <ChatPage /> : <Navigate to={"/signup"} />}
         />
       </Routes>

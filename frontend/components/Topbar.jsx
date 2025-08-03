@@ -48,7 +48,7 @@ const Topbar = () => {
               <Bell size={20} />
             </button>
             <button className="p-2 text-gray-300 hover:text-white transition rounded-md hover:bg-gray-800">
-              <Link to={"/createPosts"}>
+              <Link to={"/chat"}>
                 <MessageCircle size={20} />
               </Link>
             </button>

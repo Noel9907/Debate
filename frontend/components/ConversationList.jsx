@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, ArrowLeftSquare } from "lucide-react";
 import { useGetConversations } from "../src/hooks/useGetConversations";
 import { useSearchUsers } from "../src/hooks/useSearchUsers";
 import { useStartConversation } from "../src/hooks/useStartConversation";
+import { Link } from "react-router-dom";
 
 const ConversationList = ({
   onSelectConversation,
@@ -63,11 +64,15 @@ const ConversationList = ({
   }
 
   return (
-    <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+    <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col h-screen">
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between mb-4">
+          <Link to="/">
+            <ArrowLeftSquare className="text-gray-300" />
+          </Link>
           <h2 className="text-xl font-semibold text-white">Messages</h2>
+
           <button
             onClick={() => setShowSearch(!showSearch)}
             className="p-2 hover:bg-gray-700 rounded-full transition-colors"
@@ -90,49 +95,52 @@ const ConversationList = ({
         )}
       </div>
 
-      {/* Search Results */}
-      {showSearch && searchQuery && (
-        <div className="border-b border-gray-700 max-h-48 overflow-y-auto">
-          {searchLoading ? (
-            <div className="p-4 text-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500 mx-auto"></div>
-            </div>
-          ) : users.length > 0 ? (
-            users.map((user) => (
-              <div
-                key={user._id}
-                onClick={() => handleStartConversation(user)}
-                className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden">
-                    {user.profilepic ? (
-                      <img
-                        src={user.profilepic || "/placeholder.svg"}
-                        alt={user.username}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-white font-medium">
-                        {user.username?.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{user.username}</p>
-                    <p className="text-gray-400 text-sm">{user.fullname}</p>
+      {/* Scrollable list (search + conversations) */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Search Results */}
+        {showSearch && searchQuery && (
+          <div className="border-b border-gray-700">
+            {searchLoading ? (
+              <div className="p-4 text-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500 mx-auto"></div>
+              </div>
+            ) : users.length > 0 ? (
+              users.map((user) => (
+                <div
+                  key={user._id}
+                  onClick={() => handleStartConversation(user)}
+                  className="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden">
+                      {user.profilepic ? (
+                        <img
+                          src={user.profilepic || "/placeholder.svg"}
+                          alt={user.username}
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : (
+                        <span className="text-white font-medium">
+                          {user.username?.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">{user.username}</p>
+                      <p className="text-gray-400 text-sm">{user.fullname}</p>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-400">
+                No users found
               </div>
-            ))
-          ) : (
-            <div className="p-4 text-center text-gray-400">No users found</div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-      {/* Conversations */}
-      <div className="flex-1 overflow-y-auto">
+        {/* Conversations */}
         {error ? (
           <div className="p-4 text-center text-red-400">
             Failed to load conversations
@@ -155,22 +163,18 @@ const ConversationList = ({
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden">
-                      {otherParticipant?.profilepic ? (
-                        <img
-                          src={
-                            otherParticipant.profilepic || "/placeholder.svg"
-                          }
-                          alt={otherParticipant.username}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-white font-medium">
-                          {otherParticipant?.username?.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
+                  <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden">
+                    {otherParticipant?.profilepic ? (
+                      <img
+                        src={otherParticipant.profilepic || "/placeholder.svg"}
+                        alt={otherParticipant.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white font-medium">
+                        {otherParticipant?.username?.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -184,7 +188,6 @@ const ConversationList = ({
                           formatTime(conversation.last_message_at)}
                       </span>
                     </div>
-
                     <div className="flex items-center justify-between">
                       <p className="text-gray-400 text-sm truncate">
                         {conversation.last_message?.content ||

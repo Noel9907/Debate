@@ -171,7 +171,7 @@ const MessageArea = ({ conversation, currentUser }) => {
                   <img
                     src={otherParticipant.profilepic || "/placeholder.svg"}
                     alt={otherParticipant.username}
-                    className="w-full h-full object-cover"
+                    className="w-20 h-20 object-cover"
                   />
                 ) : (
                   <span className="text-white font-medium">

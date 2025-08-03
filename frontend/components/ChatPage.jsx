@@ -43,20 +43,25 @@ const ChatPage = () => {
       </div>
 
       {/* Main content: Conversations and Messages */}
-      <div className="flex flex-1 overflow-hidden">
-        <ConversationList
-          onSelectConversation={setSelectedConversation}
-          selectedConversationId={selectedConversation?._id}
-          currentUser={currentUser}
-        />
-        <MessageArea
-          conversation={selectedConversation}
-          currentUser={currentUser}
-        />
-      </div>
+      <div className="flex h-screen">
+        {/* Left panel */}
+        <div className="w-64 border-r border-gray-700">
+          <div className="h-screen overflow-y-auto">
+            <ConversationList
+              onSelectConversation={setSelectedConversation}
+              selectedConversationId={selectedConversation?._id}
+              currentUser={currentUser}
+            />
+          </div>
+        </div>
 
-      <div className="shrink-0">
-        <Footernav />
+        {/* Right panel */}
+        <div className="flex-1 overflow-hidden">
+          <MessageArea
+            conversation={selectedConversation}
+            currentUser={currentUser}
+          />
+        </div>
       </div>
     </div>
   );
