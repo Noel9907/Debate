@@ -14,7 +14,6 @@ const useCreateComment = () => {
       position,
       author_id
     );
-
     if (!success) return Promise.reject(new Error("Invalid input"));
 
     setLoadingComment(true);
@@ -50,6 +49,7 @@ const useCreateComment = () => {
 export default useCreateComment;
 
 function handleInputErrors(postid, username, text, position, author_id) {
+  console.log("first", postid, username, text, position, author_id);
   if (
     !postid ||
     !username ||

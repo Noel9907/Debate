@@ -105,7 +105,6 @@ export const login = async (req, res) => {
   }
 };
 
-// Google OAuth authentication (handles both login and signup)
 export const googleAuth = async (req, res) => {
   try {
     const { credential } = req.body;
@@ -121,7 +120,23 @@ export const googleAuth = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
+    const {
+      sub: googleId,
+      email,
+      email_verified,
+      name,
+      picture,
+      exp,
+    } = payload;
+    // Ensure Google says the email is verified
+    if (!email_verified) {
+      return res.status(400).json({ error: "Google email is not verified" });
+    }
+
+    // Ensure token has not expired
+    if (exp * 1000 < Date.now()) {
+      return res.status(400).json({ error: "Google token expired" });
+    }
 
     // Check if user already exists with this Google ID
     let user = await User.findOne({ googleId });
@@ -142,13 +157,9 @@ export const googleAuth = async (req, res) => {
         // Create new user (Google Signup)
         let baseUsername = email.split("@")[0];
         let username = baseUsername;
-        let counter = 1;
 
         // Ensure unique username
-        while (await User.findOne({ username })) {
-          username = `${baseUsername}${counter}`;
-          counter++;
-        }
+        username = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
 
         user = new User({
           username,
@@ -175,20 +186,12 @@ export const googleAuth = async (req, res) => {
       username: user.username,
       email: user.email,
       profilepic: user.profilepic,
-      bio: user.bio,
-      location: user.location,
-      interested_categories: user.interested_categories,
-      posts_count: user.posts_count,
-      comments_count: user.comments_count,
-      followers_count: user.followers_count,
-      following_count: user.following_count,
-      total_debate_points: user.total_debate_points,
       isGoogleUser: user.isGoogleUser,
-      isNewUser, // Let frontend know if this was a signup or login
+      isNewUser,
     });
   } catch (error) {
     console.log("Error in Google auth controller", error);
-    if (error.message.includes("Invalid token")) {
+    if (error.message?.toLowerCase().includes("invalid")) {
       return res.status(400).json({ error: "Invalid Google token" });
     }
     res.status(500).json({ error: "Internal server error" });

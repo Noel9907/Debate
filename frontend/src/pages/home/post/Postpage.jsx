@@ -59,7 +59,6 @@ export default function PostPage() {
     video: false,
     image: false,
   });
-
   // Share functionality
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -164,11 +163,18 @@ export default function PostPage() {
     }
     setCommentError("");
     try {
+      // console.log({
+      //   postid: _id,
+      //   user: CurrentUser._id,
+      //   text: newComment,
+      //   stance: isFor ? "for" : "against",
+      // });
       await createComment({
         postid: _id,
-        user: CurrentUser._id,
+        author_id: CurrentUser._id,
+        username: CurrentUser.username,
         text: newComment,
-        stance: isFor ? "for" : "against",
+        position: isFor ? true : false,
       });
       setNewComment("");
       getComments(_id);
@@ -302,7 +308,7 @@ export default function PostPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-      <header className="bg-gray-900 bg-opacity-50 backdrop-blur-md py-4 sticky top-0 z-50">
+      <header className="bg-gray-900 bg-opacity-50 backdrop-blur-md py-4 sticky top-0 z-5">
         <div className="container mx-auto px-4">
           <Link
             to="/"
@@ -417,7 +423,7 @@ export default function PostPage() {
                       <button
                         onClick={handleUpvote}
                         disabled={likeLoading}
-                        className={`flex items-center px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors ${
+                        className={`flex items-center px-4 py-2 rounded-lg hover:bg-gray-700 focus:outline-none transition-colors ${
                           userVote === "up"
                             ? "text-green-400 bg-green-400/10"
                             : "text-gray-400 hover:text-white"
@@ -524,9 +530,11 @@ export default function PostPage() {
               </div>
             </article>
 
-            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Comments</h2>
-              <div className="space-y-4 mb-6">
+            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">
+                Comments
+              </h2>
+              <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 {commentsLoading ? (
                   <div className="flex justify-center py-4">
                     <div className="animate-pulse text-gray-400">
@@ -535,7 +543,7 @@ export default function PostPage() {
                   </div>
                 ) : commentsError ? (
                   <div className="p-3 bg-red-800 bg-opacity-20 border border-red-500 rounded-md">
-                    <p className="text-red-300">
+                    <p className="text-red-300 text-sm sm:text-base">
                       Error loading comments: {commentsError}
                     </p>
                     <button
@@ -555,12 +563,13 @@ export default function PostPage() {
                     />
                   ))
                 ) : (
-                  <p className="text-gray-400 text-center py-4">
-                    Be the first to comment!
-                  </p>
+                  <></>
                 )}
               </div>
-              <form onSubmit={handleSubmitComment} className="space-y-4">
+              <form
+                onSubmit={handleSubmitComment}
+                className="space-y-3 sm:space-y-4"
+              >
                 {commentError && (
                   <div className="p-2 bg-red-600 bg-opacity-20 border border-red-400 rounded text-red-200 text-sm">
                     {commentError}
@@ -576,41 +585,46 @@ export default function PostPage() {
                   <textarea
                     id="comment"
                     rows={3}
-                    className="w-full bg-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full bg-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm sm:text-base"
                     placeholder="Share your thoughts..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                   ></textarea>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <label className="inline-flex items-center text-sm text-gray-400">
-                      <input
-                        type="radio"
-                        name="position"
-                        value="for"
-                        checked={isFor}
-                        onChange={() => setIsFor(true)}
-                        className="mr-1"
-                      />
-                      For
-                    </label>
-                    <label className="inline-flex items-center text-sm text-gray-400">
-                      <input
-                        type="radio"
-                        name="position"
-                        value="against"
-                        checked={!isFor}
-                        onChange={() => setIsFor(false)}
-                        className="mr-1"
-                      />
-                      Against
-                    </label>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-400 mr-3">
+                      Position:
+                    </span>
+                    <div className="relative inline-flex bg-gray-700 rounded-lg p-1 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => setIsFor(true)}
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                          isFor
+                            ? "bg-green-600 text-white shadow-md"
+                            : "text-gray-400 hover:text-gray-300"
+                        }`}
+                      >
+                        👍 For
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsFor(false)}
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                          !isFor
+                            ? "bg-red-600 text-white shadow-md"
+                            : "text-gray-400 hover:text-gray-300"
+                        }`}
+                      >
+                        👎 Against
+                      </button>
+                    </div>
                   </div>
                   <button
                     type="submit"
                     disabled={LoadingComment}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+                    className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 text-sm sm:text-base"
                   >
                     {LoadingComment ? "Posting..." : "Post Comment"}
                   </button>

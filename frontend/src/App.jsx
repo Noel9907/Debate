@@ -9,6 +9,7 @@ import Profile from "./pages/profile/profile.jsx";
 import CreatePost from "./pages/home/CreatePosts.jsx";
 import SearchPage from "./pages/connect_page/search.jsx";
 import Postpage from "./pages/home/Post/Postpage.jsx";
+import ChatPage from "../components/ChatPage.jsx";
 
 function App() {
   const { authUser } = useAuthContext();
@@ -24,6 +25,7 @@ function App() {
           path="/createPosts"
           element={authUser ? <CreatePost /> : <Navigate to={"/signup"} />}
         />
+
         <Route
           path="/profile/:username?"
           element={authUser ? <Profile /> : <Navigate to="/signup" />}
@@ -58,6 +60,10 @@ function App() {
           path="/debatePage"
           element={authUser ? <DebateCommentPage /> : <Login />}
         /> */}
+        <Route
+          path="/t"
+          element={authUser ? <ChatPage /> : <Navigate to={"/signup"} />}
+        />
       </Routes>
 
       {/* {authUser ? <Footernav /> : <></>} */}

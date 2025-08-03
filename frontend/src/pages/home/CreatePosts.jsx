@@ -61,7 +61,7 @@ export default function CreatePost() {
       console.error("Failed to create post:", error);
     }
   };
-
+  const user = JSON.parse(localStorage.getItem("duser"));
   const handleMediaUpload = (e) => {
     const files = Array.from(e.target.files);
     const newMediaFiles = files.map((file) => ({
@@ -90,7 +90,6 @@ export default function CreatePost() {
     { value: "philosophy", label: "Philosophy", icon: "🤔" },
     { value: "other", label: "Other", icon: "💭" },
   ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
       {/* Header */}
@@ -118,11 +117,14 @@ export default function CreatePost() {
         {/* Title and Text Area with Avatar */}
         <div className="flex gap-3 items-start mb-6">
           {/* Avatar */}
-          <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-lg font-medium">
-              {name.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          <img
+            src={user.profilepic}
+            alt={`${user.username}'s profile`}
+            className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0"
+            onError={(e) => {
+              e.target.src = `https://avatar.iran.liara.run/public/boy?username=${user.username}`;
+            }}
+          />
 
           {/* Writing Area */}
           <div className="flex-1 min-w-0">
