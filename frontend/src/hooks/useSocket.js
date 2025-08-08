@@ -1,67 +1,41 @@
+// useSocket.js
 import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { socket } from "../../singleton/socket"; // import the same instance
 
 export const useSocket = () => {
-  const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socketInstance = io(import.meta.env.VITE_API_URL, {
-      withCredentials: true,
-    });
+    const handleConnect = () => setIsConnected(true);
+    const handleDisconnect = () => setIsConnected(false);
 
-    setSocket(socketInstance);
-
-    socketInstance.on("connect", () => {
-      setIsConnected(true);
-    });
-
-    socketInstance.on("disconnect", () => {
-      setIsConnected(false);
-    });
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
 
     return () => {
-      socketInstance.close();
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
     };
   }, []);
 
-  const joinConversation = (conversationId) => {
-    if (socket) {
-      socket.emit("join_conversation", conversationId);
-    }
+  const connect = () => {
+    if (!socket.connected) socket.connect();
   };
 
-  const sendMessage = (messageData) => {
-    if (socket) {
-      socket.emit("send_message", messageData);
-    }
-  };
-
-  const startTyping = (conversationId) => {
-    if (socket) {
-      socket.emit("typing_start", { conversationId });
-    }
-  };
-
-  const stopTyping = (conversationId) => {
-    if (socket) {
-      socket.emit("typing_stop", { conversationId });
-    }
-  };
-
-  const markMessagesRead = (conversationId) => {
-    if (socket) {
-      socket.emit("mark_messages_read", { conversationId });
-    }
+  const disconnect = () => {
+    if (socket.connected) socket.disconnect();
   };
 
   return {
     socket,
     isConnected,
-    joinConversation,
-    sendMessage: sendMessage,
-    startTyping,
-    stopTyping,
-    markMessagesRead,
+    connect,
+    disconnect,
+    joinConversation: (id) => socket.emit("join_conversation", id),
+    sendMessage: (data) => socket.emit("send_message", data),
+    startTyping: (id) => socket.emit("typing_start", { conversationId: id }),
+    stopTyping: (id) => socket.emit("typing_stop", { conversationId: id }),
+    markMessagesRead: (id) =>
+      socket.emit("mark_messages_read", { conversationId: id }),
   };
 };

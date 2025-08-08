@@ -85,7 +85,6 @@ const MessageArea = ({ conversation, currentUser }) => {
 
     try {
       const sentMessage = await sendMessage(messageData);
-      setMessages((prev) => [...prev, sentMessage]);
     } catch (error) {
       console.error("Failed to send message:", error);
       setNewMessage(messageData.content);
