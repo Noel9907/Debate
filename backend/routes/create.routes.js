@@ -6,7 +6,12 @@ import protectRoute from "../middlewares/protectRoute.js";
 import { RateLimit } from "../middlewares/rateLimiter.js";
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
 
 const router = express.Router();
 
